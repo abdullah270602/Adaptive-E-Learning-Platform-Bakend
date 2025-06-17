@@ -5,9 +5,9 @@ import os
 
 class MinIOClientContext:
     def __init__(self):
-        self.endpoint = os.getenv("MINIO_ENDPOINT", "http://localhost:9000")
-        self.access_key = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
-        self.secret_key = os.getenv("MINIO_SECRET_KEY", "minioadmin")
+        self.endpoint = os.getenv("MINIO_ENDPOINT")
+        self.access_key = os.getenv("MINIO_ACCESS_KEY")
+        self.secret_key = os.getenv("MINIO_SECRET_KEY")
 
     def __enter__(self):
         self.client = boto3.client(
