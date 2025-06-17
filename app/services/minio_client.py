@@ -1,5 +1,3 @@
-# app/services/minio_client.py
-
 import boto3
 import os
 
