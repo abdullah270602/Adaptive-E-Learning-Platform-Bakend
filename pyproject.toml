@@ -12,7 +12,6 @@ dependencies = [
     "itsdangerous>=2.2.0",
     "openai>=1.88.0",
     "pillow>=11.2.1",
-    "psycopg2==2.9.10",
     "psycopg2-binary==2.9.10",
     "pymupdf>=1.26.1",
     "python-dotenv>=1.1.0",
