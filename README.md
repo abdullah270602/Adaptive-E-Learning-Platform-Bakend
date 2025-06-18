@@ -54,10 +54,13 @@ uv venv
 #### Install project dependencies
 
 ```bash
-uv pip install .
+uv sync
 ```
+or 
 
-This installs everything from `pyproject.toml` and locks versions using `uv.lock`.
+```bash
+uv install
+```
 
 ---
 
