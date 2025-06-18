@@ -17,10 +17,6 @@ cd fyp_backend
 
 ---
 
-Great! Here's a cleaned-up and properly formatted version of that section, ready to paste into your `README.md`:
-
----
-
 ### 2. 🟣 Setup with `uv` (Recommended)
 
 #### Prerequisite: Install `uv`
