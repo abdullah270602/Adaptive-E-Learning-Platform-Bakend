@@ -33,18 +33,3 @@ class BookModel(BaseModel):
     created_at: datetime
     chapters: List[ChapterModel] = []
 
-
-class BookSchema(BaseModel):
-    id: UUID
-    title: str
-    file_name: str
-    file_id: str
-    s3_key: str
-    created_at: datetime
-
-    class Config:
-        orm_mode = True
-
-
-class BookListResponse(BaseModel):
-    books: List[BookSchema]
