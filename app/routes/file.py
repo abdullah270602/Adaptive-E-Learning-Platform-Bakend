@@ -1,7 +1,7 @@
 import logging
 import os
 import uuid
-from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status
 from app.auth.dependencies import get_current_user
 from app.database.book_queries import create_book_query, get_books_by_user
 from app.database.connection import PostgresConnection
@@ -12,7 +12,11 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/file", tags=["Files"])
 
-@router.post("/upload")
+
+@router.post(
+    "/upload",
+    status_code=status.HTTP_201_CREATED,
+)
 async def upload_file(
     file: UploadFile = File(...),
     document_type: str = Form(...),  # "book", "slides", "notes"
@@ -33,7 +37,7 @@ async def upload_file(
 
         file_bytes = await file.read()  # Await first
         with open(tmp_path, "wb") as f:
-            f.write(file_bytes)         # Then write synchronously
+            f.write(file_bytes)  # Then write synchronously
 
         #  Upload File to MinIO
         s3_key = f"user_uploads/{current_user}/{unique_name}"
@@ -47,13 +51,13 @@ async def upload_file(
 
         if document_type == "book" and toc_pages:
             start_page, end_page = map(int, toc_pages.split("-"))
-            
+
             with PostgresConnection() as conn:
                 # Create book entry in database
                 book = create_book_query(
                     conn=conn,
                     user_id=current_user,
-                    book_id= book_id,
+                    book_id=book_id,
                     title=file.filename,
                     file_name=file.filename,
                     s3_key=s3_key,
