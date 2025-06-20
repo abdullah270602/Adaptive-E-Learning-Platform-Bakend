@@ -1,3 +1,8 @@
+import json
+
+from app.schemas.learning_profile_form import LEARNING_PROFILE_FORM
+
+
 TOC_EXTRACTION_PROMPT = """
 You are an expert at extracting Table of Contents (TOC) information from a extracted text.
 
@@ -58,3 +63,63 @@ QUALITY CHECKS:
 - Check that commas separate array elements correctly
 - Validate the JSON structure before returning
 """
+
+LEARNING_PROFILE_SYSTEM_PROMPT = """ 
+You are a learning style analyst that specializes in creating personalized VRK (Visual, Reading/Writing, Kinesthetic) learning profile descriptions. Your role is to:
+
+1. Analyze questionnaire responses that measure learning preferences across visual, reading/writing, and kinesthetic modalities
+2. Generate detailed, actionable learning profiles in paragraph form
+3. Integrate behavioral preferences (timing, environment, goals) with learning style data
+4. Write in second person ("You prefer...") to make insights immediately applicable
+5. Provide specific, practical recommendations rather than generic statements
+
+Your descriptions should be 150-200 words, professionally written but personal in tone, and focus on how the individual actually learns best rather than just listing their preferences.
+"""
+
+def get_learniing_style_prompt( answers, vrk_scores, dominant_styles, behavioral_prefs):
+    
+    LEARNING_STYLE_PROMPT = f"""You are analyzing results from a VRK learning style assessment combined with behavioral preferences. Generate a comprehensive, personalized description of the user's learning style.
+
+    **ASSESSMENT CONTEXT:**
+    This combines VRK learning modalities (Visual, Reading/Writing, Kinesthetic) with behavioral factors like timing, environment, and goals.
+
+    **RAW DATA:**
+    Questionnaire Structure:
+    {LEARNING_PROFILE_FORM}
+
+    User Responses:
+    {json.dumps(answers, indent=2)}
+
+    **CALCULATED INSIGHTS:**
+    VRK Scores: {json.dumps(vrk_scores, indent=2)}
+    Dominant Learning Style(s): {dominant_styles}
+    Behavioral Preferences: {json.dumps(behavioral_prefs, indent=2)}
+
+    **OUTPUT REQUIREMENTS:**
+    Create a single, flowing paragraph (150-200 words) that:
+
+    1. **Identifies Primary Style**: Start with their dominant learning preference based on highest VRK scores
+    2. **Describes Processing Style**: Explain HOW they best absorb and retain information
+    3. **Integrates Behavioral Context**: Weave in their timing, environment, and goal preferences
+    4. **Provides Specific Insights**: Give concrete, actionable understanding of their learning approach
+    5. **Addresses Secondary Preferences**: Mention other strong areas or balanced tendencies
+
+    **WRITING GUIDELINES:**
+    - Use second person ("You demonstrate..." "Your preference for...")
+    - Professional yet personal tone
+    - Avoid generic educational jargon
+    - Focus on practical implications
+    - Single paragraph, no bullet points or lists
+    - Response should only contain the learning style description, no additional text
+
+    **SPECIAL HANDLING:**
+    - If scores are close (within 2 points): Describe as "balanced" or "multimodal"
+    - If one style is very low (≤4): Briefly mention what to avoid
+    - If behavioral preferences seem to conflict with learning style: Address constructively
+
+    **EXAMPLE TONE:**
+    "You exhibit a strong kinesthetic learning preference, demonstrating highest engagement when you can physically interact with material through hands-on activities and real-world problem solving. Your preference for evening study sessions with background music creates an environment that supports your need for dynamic, active learning experiences..."
+
+    Generate the learning style description now:"""
+    
+    return LEARNING_STYLE_PROMPT

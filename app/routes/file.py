@@ -100,3 +100,4 @@ async def list_user_books(
             f"[List Books] Error retrieving books for user {current_user}: {str(e)}"
         )
         raise HTTPException(status_code=500, detail="Failed to retrieve user books")
+
