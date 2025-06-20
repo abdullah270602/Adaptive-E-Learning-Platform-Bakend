@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from uuid import UUID, uuid4
 from datetime import datetime
 from psycopg2.extensions import connection as PGConnection
@@ -105,3 +105,106 @@ def get_books_by_user(conn: PGConnection, user_id: str) -> List[dict]:
         results = cursor.fetchall()
 
     return [dict(row) for row in results]
+
+
+def get_book_structure_depreciated(conn: PGConnection, book_id: UUID) -> dict:
+    query = """
+        SELECT 
+            c.id as chapter_id,
+            c.chapter_number,
+            c.title as chapter_title,
+            c.created_at as chapter_created_at,
+            s.id as section_id,
+            s.title as section_title,
+            s.page,
+            s.s3_key,
+            s.embedding_id,
+            s.added_date
+        FROM chapters c
+        LEFT JOIN sections s ON c.id = s.chapter_id
+        WHERE c.book_id = %s
+        ORDER BY c.chapter_number::INT, s.page;
+    """
+
+    with conn.cursor(cursor_factory=DictCursor) as cursor:
+        cursor.execute(query, (str(book_id),))
+        rows = cursor.fetchall()
+
+    chapters_map = {}
+    for row in rows:
+        chap_id = row["chapter_id"]
+        if chap_id not in chapters_map:
+            chapters_map[chap_id] = {
+                "chapter_id": chap_id,
+                "chapter_number": row["chapter_number"],
+                "title": row["chapter_title"],
+                "created_at": row["chapter_created_at"],
+                "sections": []
+            }
+
+        if row["section_id"]:
+            chapters_map[chap_id]["sections"].append({
+                "id": row["section_id"],
+                "chapter_id": chap_id,
+                "title": row["section_title"],
+                "page": row["page"],
+                "s3_key": row["s3_key"],
+                "embedding_id": row["embedding_id"],
+                "added_date": row["added_date"]
+            })
+
+    return {
+        "book_id": book_id,
+        "chapters": list(chapters_map.values())
+    }
+
+
+def get_book_structure_query(conn, book_id: UUID) -> Optional[dict]:
+    query = """
+    SELECT 
+      b.id AS book_id,
+      json_agg(
+        json_build_object(
+          'chapter_id', c.id,
+          'chapter_number', c.chapter_number,
+          'title', c.title,
+          'sections', (
+            SELECT json_agg(
+              json_build_object(
+                'section_id', s.id,
+                'title', s.title,
+                'page', s.page
+              )
+            )
+            FROM sections s
+            WHERE s.chapter_id = c.id
+          )
+        )
+      ) AS chapters
+    FROM books b
+    JOIN chapters c ON c.book_id = b.id
+    WHERE b.id = %s
+    GROUP BY b.id;
+    """
+    with conn.cursor(cursor_factory=DictCursor) as cursor:
+        cursor.execute(query, (str(book_id),))
+        result = cursor.fetchone()
+
+    return dict(result) if result else None
+
+
+def get_section_content_query(conn: PGConnection, section_id: UUID) -> dict:
+    query = """
+        SELECT id, chapter_id, title, page, s3_key, embedding_id, added_date
+        FROM sections
+        WHERE id = %s;
+    """
+
+    with conn.cursor(cursor_factory=DictCursor) as cursor:
+        cursor.execute(query, (str(section_id),))
+        row = cursor.fetchone()
+
+    if not row:
+        raise ValueError("Section not found")
+
+    return dict(row)
