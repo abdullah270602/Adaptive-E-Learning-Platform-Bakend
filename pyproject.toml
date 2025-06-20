@@ -19,3 +19,8 @@ dependencies = [
     "python-multipart>=0.0.20",
     "uvicorn>=0.34.3",
 ]
+
+[dependency-groups]
+dev = [
+    "psycopg2>=2.9.10",
+]
