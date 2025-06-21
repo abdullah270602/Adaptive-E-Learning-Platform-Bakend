@@ -2,8 +2,14 @@ import traceback
 from fastapi import APIRouter, Depends, HTTPException, status
 from app.auth.dependencies import get_current_user
 from app.database.connection import PostgresConnection
-from app.database.learning_profile_queries import has_learning_profile, save_learning_profile
-from app.schemas.learning_profile import LearningProfileResponse, LearningProfileSubmission
+from app.database.learning_profile_queries import (
+    has_learning_profile,
+    save_learning_profile,
+)
+from app.schemas.learning_profile import (
+    LearningProfileResponse,
+    LearningProfileSubmission,
+)
 from app.schemas.learning_profile_form import LEARNING_PROFILE_FORM
 from app.services.llms import generate_learning_profile_description
 
@@ -17,8 +23,7 @@ async def get_learning_profile_form(current_user: str = Depends(get_current_user
 
 @router.post("/form", response_model=LearningProfileResponse)
 async def submit_learning_profile(
-    submission: LearningProfileSubmission,
-    current_user: str = Depends(get_current_user)
+    submission: LearningProfileSubmission, current_user: str = Depends(get_current_user)
 ):
     try:
         # Aggregate scores
@@ -29,18 +34,24 @@ async def submit_learning_profile(
             style_scores[ans.style] += ans.score
             count[ans.style] += 1
 
-        avg_scores = {k: round(style_scores[k] / count[k], 2) for k in style_scores if count[k] != 0}
+        avg_scores = {
+            k: round(style_scores[k] / count[k], 2)
+            for k in style_scores
+            if count[k] != 0
+        }
         primary_style = max(avg_scores, key=avg_scores.get)
 
-        full_description = await generate_learning_profile_description(submission.ratings, submission.mcqs)
+        full_description = await generate_learning_profile_description(
+            submission.ratings, submission.mcqs, avg_scores, primary_style
+        )
 
         with PostgresConnection() as conn:
-            exists = has_learning_profile(conn, current_user)
-            
             # TODO - Uncomment the following check after testing
-            # if exists: 
+            # exists = has_learning_profile(conn, current_user)
+
+            # if exists:
             #     raise HTTPException(status_code=400, detail="Learning profile already exists for this user")
-            
+
             save_learning_profile(
                 conn=conn,
                 user_id=current_user,
@@ -48,7 +59,7 @@ async def submit_learning_profile(
                 reading=avg_scores.get("ReadingWriting", 0),
                 kinesthetic=avg_scores.get("Kinesthetic", 0),
                 primary_style=primary_style,
-                description=full_description
+                description=full_description,
             )
 
         return LearningProfileResponse(
@@ -61,9 +72,11 @@ async def submit_learning_profile(
 
     except Exception as e:
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail="Failed to process learning profile")
-    
-    
+        raise HTTPException(
+            status_code=500, detail="Failed to process learning profile"
+        )
+
+
 @router.get("/form/status", status_code=status.HTTP_200_OK)
 async def check_learning_profile_status(current_user: str = Depends(get_current_user)):
     try:
