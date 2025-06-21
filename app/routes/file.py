@@ -118,6 +118,10 @@ async def upload_file(
             "book_metadata": result if document_type == "book" else None,
             "presentation_metadata": result if document_type == "slides" else None
         }
+    
+    
+    except HTTPException as http_err:
+        raise http_err
 
     except Exception as e:
         logger.error(f"[Upload] Failed to upload: {str(e)}")
