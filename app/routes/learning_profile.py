@@ -1,7 +1,8 @@
+import traceback
 from fastapi import APIRouter, Depends, HTTPException, status
 from app.auth.dependencies import get_current_user
 from app.database.connection import PostgresConnection
-from app.database.learning_profile_queries import save_learning_profile
+from app.database.learning_profile_queries import has_learning_profile, save_learning_profile
 from app.schemas.learning_profile import LearningProfileResponse, LearningProfileSubmission
 from app.schemas.learning_profile_form import LEARNING_PROFILE_FORM
 from app.services.llms import generate_learning_profile_description
@@ -31,11 +32,15 @@ async def submit_learning_profile(
         avg_scores = {k: round(style_scores[k] / count[k], 2) for k in style_scores if count[k] != 0}
         primary_style = max(avg_scores, key=avg_scores.get)
 
-        # description
         full_description = await generate_learning_profile_description(submission.ratings, submission.mcqs)
 
-        # Save to DB
         with PostgresConnection() as conn:
+            exists = has_learning_profile(conn, current_user)
+            
+            # TODO - Uncomment the following check after testing
+            # if exists: 
+            #     raise HTTPException(status_code=400, detail="Learning profile already exists for this user")
+            
             save_learning_profile(
                 conn=conn,
                 user_id=current_user,
@@ -55,6 +60,15 @@ async def submit_learning_profile(
         )
 
     except Exception as e:
-        import traceback; 
         traceback.print_exc()
         raise HTTPException(status_code=500, detail="Failed to process learning profile")
+    
+    
+@router.get("/form/status", status_code=status.HTTP_200_OK)
+async def check_learning_profile_status(current_user: str = Depends(get_current_user)):
+    try:
+        with PostgresConnection() as conn:
+            exists = has_learning_profile(conn, current_user)
+        return {"submitted": exists}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Could not verify profile status")

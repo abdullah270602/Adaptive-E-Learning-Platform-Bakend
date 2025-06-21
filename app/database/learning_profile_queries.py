@@ -28,3 +28,10 @@ def save_learning_profile(
             (str(user_id), visual, reading, kinesthetic, primary_style, description)
         )
         conn.commit()
+
+
+def has_learning_profile(conn: PGConnection, user_id: str) -> bool:
+    query = "SELECT 1 FROM learning_profiles WHERE user_id = %s LIMIT 1;"
+    with conn.cursor() as cursor:
+        cursor.execute(query, (user_id,))
+        return cursor.fetchone() is not None
