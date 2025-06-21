@@ -28,7 +28,7 @@ router = APIRouter(prefix="/file", tags=["Files"])
 )
 async def upload_file(
     file: UploadFile = File(...),
-    document_type: str = Form(...),  # "book", "slides", "notes"
+    document_type: str = Form(...),  # "book", "slides","presentation", "notes"
     toc_pages: str = Form(None),
     current_user: str = Depends(get_current_user),
 ):
@@ -82,7 +82,7 @@ async def upload_file(
                 book_id=book_id,
                 s3_key=s3_key,
             )
-        elif document_type == "slides":
+        elif document_type == "slides" or document_type == "presentation":
             
             prs = Presentation(tmp_path)
             total_slides = len(prs.slides)
@@ -116,7 +116,7 @@ async def upload_file(
             "message": "Upload successful",
             "s3_key": s3_key,
             "book_metadata": result if document_type == "book" else None,
-            "presentation_metadata": result if document_type == "slides" else None
+            "presentation_metadata": result if document_type == "slides" or document_type == "presentation" else None
         }
     
     
