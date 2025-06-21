@@ -3,12 +3,12 @@ from typing import Dict, List
 from fastapi import HTTPException
 import fitz  # PyMuPDF
 from PIL import Image
-import io, os, json
+import io, json
 from app.database.book_queries import create_book_structure
 from app.database.connection import PostgresConnection
 import logging
 import base64
-from openai import OpenAI
+from app.services.llms import get_openai_client
 from app.services.prompts import TOC_EXTRACTION_PROMPT
 
 logger = logging.getLogger(__name__)
@@ -92,10 +92,7 @@ async def process_toc_with_llm(text: str) -> dict:
         #     } for img in images
         # ]
 
-        client = OpenAI(
-            api_key=os.getenv("GROQ_API_KEY"),
-            base_url=os.getenv("GROQ_BASE_URL"),
-        )
+        client = get_openai_client()
 
         response = client.chat.completions.create(
             model="llama-3.3-70b-versatile",  # TODO make this into a config variable
@@ -119,117 +116,6 @@ async def process_toc_with_llm(text: str) -> dict:
     except Exception as e:
         logger.error(f"[TOC] LLaMA TOC processing failed: {e}")
         raise
-
-
-
-# async def create_textbook_collections(
-#     file_id: str,
-#     book_title: str,
-#     toc_structure: List[Dict],
-#     s3_key: str,
-#     current_user: str,
-# ) -> Dict:
-#     try:
-#         collections = {
-#             "book_id": file_id,
-#             "section_collections": [],
-#             "chapter_collections": [],
-#         }
-
-#         with MinIOClientContext() as s3:
-#             bucket = os.getenv("MINIO_BUCKET_NAME")
-
-#             for chapter in toc_structure.get("chapters", []):
-#                 chapter_sections = chapter.get("sections", [])
-#                 chapter_page = chapter.get("page", None)
-#                 chapter_title = chapter.get("title", "Untitled Chapter")
-#                 chapter_number = extract_chapter_number(chapter_title)
-#                 chapter_collection_id = str(uuid.uuid4())
-
-#                 # Handle flat chapters (no sections)
-#                 if not chapter_sections:
-#                     chapter_sections = [{"title": chapter_title, "page": chapter_page}]
-
-#                 section_collection_ids = []
-
-#                 for section in chapter_sections:
-#                     section_id = str(uuid.uuid4())
-#                     section_collection = {
-#                         "collection_id": section_id,
-#                         "name": f"{book_title} - {section.get('title', 'Untitled Section')}",
-#                         "created_date": datetime.now().isoformat(),
-#                         "user_id": current_user,
-#                         "parent_chapter": chapter_number,
-#                         "materials": {
-#                             "textbook_sections": [
-#                                 {
-#                                     "section_id": section_id,
-#                                     "title": section.get("title", "Untitled Section"),
-#                                     "page": section.get("page"),
-#                                     "s3_key": s3_key,
-#                                     "added_date": datetime.now().isoformat(),
-#                                 }
-#                             ],
-#                             "transcriptions": [],
-#                             "presentations": [],
-#                             "notes": [],
-#                         },
-#                     }
-
-#                     section_key = f"collections/{current_user}/{section_id}.json"
-#                     s3.put_object(
-#                         Bucket=bucket,
-#                         Key=section_key,
-#                         Body=json.dumps(section_collection).encode("utf-8"),
-#                         ContentType="application/json",
-#                     )
-
-#                     section_collection_ids.append(section_id)
-#                     collections["section_collections"].append(section_collection)
-
-#                 # Chapter collection
-#                 chapter_collection = {
-#                     "collection_id": chapter_collection_id,
-#                     "name": f"{book_title} - {chapter_number}: {chapter_title}",
-#                     "created_date": datetime.now().isoformat(),
-#                     "user_id": current_user,
-#                     "chapter_number": chapter_number,
-#                     "materials": {
-#                         "textbook_sections": [
-#                             {
-#                                 "section_id": str(uuid.uuid4()),
-#                                 "title": sec.get("title", "Untitled Section"),
-#                                 "page": sec.get("page"),
-#                                 "s3_key": s3_key,
-#                                 "added_date": datetime.now().isoformat(),
-#                             }
-#                             for sec in chapter_sections
-#                         ],
-#                         "transcriptions": [],
-#                         "presentations": [],
-#                         "notes": [],
-#                         "subcollections": section_collection_ids,
-#                     },
-#                 }
-
-#                 chapter_key = f"collections/{current_user}/{chapter_collection_id}.json"
-#                 s3.put_object(
-#                     Bucket=bucket,
-#                     Key=chapter_key,
-#                     Body=json.dumps(chapter_collection).encode("utf-8"),
-#                     ContentType="application/json",
-#                 )
-
-#                 collections["chapter_collections"].append(chapter_collection)
-
-#         return collections
-
-#     except Exception as e:
-#         traceback.print_exc()
-#         logger.error(f"[Collection] Failed to create textbook collections: {e}")
-#         raise HTTPException(
-#             status_code=500, detail="Failed to create textbook collections."
-#         )
 
 
 async def process_toc_pages(

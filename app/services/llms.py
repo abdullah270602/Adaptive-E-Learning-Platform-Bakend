@@ -10,6 +10,13 @@ from app.services.prompts import (
 
 logger = logging.getLogger(__name__)
 
+def get_openai_client():
+    """ Initialize and return the OpenAI client with Groq configuration. """
+    return OpenAI(
+        api_key=os.getenv("GROQ_API_KEY"),
+        base_url=os.getenv("GROQ_BASE_URL")
+    )
+
 
 async def generate_learning_profile_description(
     ratings: List[RatingAnswer],
@@ -32,10 +39,7 @@ async def generate_learning_profile_description(
             behavioral_prefs=behavioral,
         )
 
-        client = OpenAI(
-            api_key=os.getenv("GROQ_API_KEY"),
-            base_url=os.getenv("GROQ_BASE_URL"),
-        )
+        client = get_openai_client()
 
         response = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
