@@ -13,7 +13,6 @@ from app.database.book_queries import (
 )
 from app.database.connection import PostgresConnection
 from app.database.slides_queries import create_slide_query, get_slides_by_user
-from app.schemas.slides import ListPresentationsResponse
 from app.services.minio_client import MinIOClientContext
 from app.services.book_processor import process_toc_pages
 
