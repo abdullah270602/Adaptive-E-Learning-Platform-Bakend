@@ -34,7 +34,7 @@ async def submit_learning_profile(
         # description
         full_description = await generate_learning_profile_description(submission.ratings, submission.mcqs)
 
-        # 3. Save to DB
+        # Save to DB
         with PostgresConnection() as conn:
             save_learning_profile(
                 conn=conn,
