@@ -2,6 +2,7 @@ import logging
 import os
 import traceback
 import uuid
+from pptx import Presentation
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status
 from app.auth.dependencies import get_current_user
 from app.database.book_queries import (
@@ -11,6 +12,7 @@ from app.database.book_queries import (
     get_section_content_query,
 )
 from app.database.connection import PostgresConnection
+from app.database.slides_query import create_slide_query
 from app.services.minio_client import MinIOClientContext
 from app.services.book_processor import process_toc_pages
 
@@ -18,7 +20,8 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/file", tags=["Files"])
 
-
+# TODO Make this endpoint modular divided by document type
+# and add more validation for file types and sizes
 @router.post(
     "/upload",
     status_code=status.HTTP_201_CREATED,
@@ -32,8 +35,11 @@ async def upload_file(
     try:
         # Validate file extension
         ext = file.filename.split(".")[-1].lower()
-        if ext != "pdf":
-            raise HTTPException(status_code=400, detail="Only PDF files are supported.")
+        if document_type == "book" and ext != "pdf":
+            raise HTTPException(status_code=400, detail="Books must be in PDF format.")
+        elif document_type == "slides" and ext != "pptx":
+            raise HTTPException(status_code=400, detail="Slides must be in .pptx format.")
+
 
         # Save file temporarily
         unique_name = f"{uuid.uuid4()}_{file.filename}"
@@ -76,15 +82,41 @@ async def upload_file(
                 book_id=book_id,
                 s3_key=s3_key,
             )
+        elif document_type == "slides":
+            
+            prs = Presentation(tmp_path)
+            total_slides = len(prs.slides)
+            has_notes = any(slide.has_notes_slide for slide in prs.slides)
+
+            # Save metadata in Postgres
+            with PostgresConnection() as conn:
+                presentation_id = create_slide_query(
+                    conn=conn,
+                    user_id=current_user,
+                    title=file.filename,
+                    original_filename=file.filename,
+                    s3_key=s3_key,
+                    total_slides=total_slides,
+                    has_speaker_notes=has_notes,
+                )
+
+            result = {
+                "presentation_id": presentation_id,
+                "title": file.filename,
+                "slides": total_slides,
+                "has_notes": has_notes,
+            }
+
         else:
             logger.info(f"No TOC processing needed for document_type={document_type}")
 
         os.remove(tmp_path)
 
         return {
-            "message": "Upload successful.",
+            "message": "Upload successful",
             "s3_key": s3_key,
-            "book_toc": result,
+            "book_metadata": result if document_type == "book" else None,
+            "presentation_metadata": result if document_type == "slides" else None
         }
 
     except Exception as e:
