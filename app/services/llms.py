@@ -54,4 +54,4 @@ async def generate_learning_profile_description(
 
     except Exception as e:
         logger.error(f"[Learning Profile] Failed to generate description: {str(e)}")
-        return "Unable to generate learning profile description at this time."
+        raise e
