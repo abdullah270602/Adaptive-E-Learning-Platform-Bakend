@@ -12,7 +12,8 @@ from app.database.book_queries import (
     get_section_content_query,
 )
 from app.database.connection import PostgresConnection
-from app.database.slides_query import create_slide_query
+from app.database.slides_queries import create_slide_query, get_slides_by_user
+from app.schemas.slides import ListPresentationsResponse
 from app.services.minio_client import MinIOClientContext
 from app.services.book_processor import process_toc_pages
 
@@ -164,3 +165,16 @@ async def get_section_content(
         raise HTTPException(
             status_code=500, detail="Failed to retrieve section content"
         )
+
+
+@router.get("/slides", status_code=status.HTTP_200_OK)
+async def list_user_slides(current_user: str = Depends(get_current_user)):
+    try:
+        with PostgresConnection() as conn:
+            presentations = get_slides_by_user(conn, current_user)
+
+        return {"presentations": presentations}
+    
+    except Exception as e:
+        logging.error(f"[Slides] Failed to fetch presentations for user {current_user}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve presentation list")

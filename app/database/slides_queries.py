@@ -1,3 +1,4 @@
+from typing import List
 from uuid import UUID, uuid4
 from psycopg2.extensions import connection as PGConnection
 from psycopg2.extras import DictCursor
@@ -33,3 +34,17 @@ def create_slide_query(
         ))
         conn.commit()
         return cursor.fetchone()["id"]
+
+
+def get_slides_by_user(conn: PGConnection, user_id: UUID) -> List[dict]:
+    query = """
+    SELECT id, original_filename,total_slides, has_speaker_notes, created_at
+    FROM presentations
+    WHERE user_id = %s
+    ORDER BY created_at DESC
+    """
+    with conn.cursor(cursor_factory=DictCursor) as cursor:
+        cursor.execute(query, (str(user_id),))
+        results = cursor.fetchall()
+
+    return [dict(row) for row in results]
