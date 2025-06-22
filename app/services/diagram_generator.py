@@ -48,7 +48,6 @@ async def generate_diagrams(content: str, summary: str, learning_profile: str) -
         )
 
         raw_content = response.choices[0].message.content
-        print("🐍 File: services/diagram_generator.py | Line: 51 | undefined ~ raw_content",raw_content)
         diagrams = extract_mermaid_diagrams(raw_content)
         return [post_process_mermaid(d) for d in diagrams]
 
