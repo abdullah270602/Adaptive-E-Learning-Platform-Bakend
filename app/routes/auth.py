@@ -24,7 +24,6 @@ async def login(request: Request):
 async def auth_callback(request: Request):
     try:
         user_info = await get_google_user_info(request)
-        print("🐍 File: routes/auth.py | Line: 27 | undefined ~ user_info",user_info)
         email = user_info["email"]
         name = user_info.get("name", "")
         picture = user_info.get("picture", "")
