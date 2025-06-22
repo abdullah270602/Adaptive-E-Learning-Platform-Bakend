@@ -28,7 +28,7 @@ router = APIRouter(prefix="/file", tags=["Files"])
 )
 async def upload_file(
     file: UploadFile = File(...),
-    document_type: str = Form(...),  # "book", "slides","presentation", "notes"
+    document_type: str = Form(...),  # "book", "presentation", "notes"
     toc_pages: str = Form(None),
     current_user: str = Depends(get_current_user),
 ):
@@ -82,7 +82,8 @@ async def upload_file(
                 book_id=book_id,
                 s3_key=s3_key,
             )
-        elif document_type == "slides" or document_type == "presentation":
+            result["type"] = document_type
+        elif document_type == "presentation":
             
             prs = Presentation(tmp_path)
             total_slides = len(prs.slides)
@@ -101,6 +102,7 @@ async def upload_file(
                 )
 
             result = {
+                "type": document_type,
                 "presentation_id": presentation_id,
                 "title": file.filename,
                 "slides": total_slides,
@@ -124,6 +126,7 @@ async def upload_file(
         raise http_err
 
     except Exception as e:
+        traceback.print_exc()
         logger.error(f"[Upload] Failed to upload: {str(e)}")
         raise HTTPException(status_code=500, detail="Upload failed.")
 

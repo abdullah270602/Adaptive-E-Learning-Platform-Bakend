@@ -104,7 +104,7 @@ def get_books_by_user(conn: PGConnection, user_id: str) -> List[dict]:
         cursor.execute(query, (user_id,))
         results = cursor.fetchall()
 
-    return [dict(row) for row in results]
+    return [{"type": "book", **dict(row)} for row in results]
 
 
 def get_book_structure_depreciated(conn: PGConnection, book_id: UUID) -> dict:
@@ -208,3 +208,5 @@ def get_section_content_query(conn: PGConnection, section_id: UUID) -> dict:
         raise ValueError("Section not found")
 
     return dict(row)
+
+

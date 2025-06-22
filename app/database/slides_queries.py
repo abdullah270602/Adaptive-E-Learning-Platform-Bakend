@@ -47,4 +47,4 @@ def get_slides_by_user(conn: PGConnection, user_id: UUID) -> List[dict]:
         cursor.execute(query, (str(user_id),))
         results = cursor.fetchall()
 
-    return [dict(row) for row in results]
+    return [{"type": "presentation", **dict(row)} for row in results]
