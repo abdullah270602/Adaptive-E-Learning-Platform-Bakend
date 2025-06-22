@@ -2,7 +2,7 @@
 ## 📚 Adaptive Learning Platform – Backend
 
 A FastAPI backend using Google OAuth2 authentication, PostgreSQL (Neon), and MinIO for file storage.
-Project dependencies are managed using [`uv`](https://github.com/astral-sh/uv), with optional support for `pip`.
+Project dependencies are managed using [`uv`](https://github.com/astral-sh/uv).
 
 ---
 
@@ -11,7 +11,7 @@ Project dependencies are managed using [`uv`](https://github.com/astral-sh/uv), 
 ### 1. 🧪 Clone the Repository
 
 ```bash
-git clone https://github.com/abdullah270602/fyp_backend.git
+git clone https://github.com/abdullah270602/Adaptive-E-Learning-Platform-Bakend
 cd fyp_backend
 ```
 
