@@ -29,9 +29,9 @@ async def generate_diagrams(content: str, summary: str, learning_profile: str) -
     """
     Generates visual diagrams (Mermaid format) based on learning content and user profile.
     """
-    DIAGRAM_GENERATION_PROMPT.format(
+    prompt = DIAGRAM_GENERATION_PROMPT.format(
         content=content,
-        summary=summary,
+        summary=summary or "No summary provided",
         learning_profile=learning_profile
     )
 
@@ -42,12 +42,13 @@ async def generate_diagrams(content: str, summary: str, learning_profile: str) -
             model= LLAMA_3_70b,
             messages=[
                 {"role": "system", "content": "You are a helpful assistant that generates learning diagrams using Mermaid syntax."},
-                {"role": "user", "content": DIAGRAM_GENERATION_PROMPT}
+                {"role": "user", "content": prompt}
             ],
             temperature=0.4
         )
 
         raw_content = response.choices[0].message.content
+        print("🐍 File: services/diagram_generator.py | Line: 51 | undefined ~ raw_content",raw_content)
         diagrams = extract_mermaid_diagrams(raw_content)
         return [post_process_mermaid(d) for d in diagrams]
 

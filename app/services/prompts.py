@@ -141,6 +141,116 @@ USER PROFILE:
 RULES:
 - Use only: graph TD, [square brackets], and -->
 - Max 8 nodes per diagram
+- Keep labels short (1-4 words) but MEANINGFUL
+- Extract SPECIFIC terms, formulas, and concepts from the content
+- Show logical relationships: causes → effects, steps → outcomes, parts → wholes
+- Each diagram should focus on a different aspect of the topic
+- Use actual terminology from the content, not generic words
+- Avoid spaces in compound labels (use "RightTriangle" not "Right Triangle")
+
+DIAGRAM TYPES TO FOCUS ON:
+1. **Process Flow**: Show how something works step-by-step
+2. **Cause-Effect**: Show what leads to what and why
+3. **System Structure**: Show how components relate to each other
+4. **Concept Hierarchy**: Show how ideas build on each other
+
+QUALITY CHECKS:
+- Can someone understand the topic just from your diagrams?
+- Do your node labels come directly from the content?
+- Are you showing real relationships, not just random connections?
+- Does each diagram reveal something different about the topic?
+- Would these diagrams help someone study or remember the concepts?
+
+THINK BEFORE CREATING:
+1. What are the key processes described?
+2. What causes what in this content?
+3. How do the components interact?
+4. What would be most helpful for understanding?
+
+EXAMPLES OF GOOD vs BAD DIAGRAMS:
+
+## GOOD EXAMPLES:
+
+**Content**: "Photosynthesis converts sunlight, CO2, and water into glucose and oxygen through light reactions in thylakoids and Calvin cycle in stroma."
+
+graph TD
+    Sunlight --> Chlorophyll
+    CO2 --> CalvinCycle
+    H2O --> LightReactions
+    Chlorophyll --> LightReactions
+    LightReactions --> ATP
+    LightReactions --> NADPH
+    ATP --> CalvinCycle
+    NADPH --> CalvinCycle
+    CalvinCycle --> Glucose
+
+**Why good**: Shows actual process flow with specific molecules and locations.
+
+**Content**: "Supply increases when price rises. Demand decreases when price rises. Market equilibrium occurs where they intersect."
+
+graph TD
+    PriceIncrease --> SupplyIncrease
+    PriceIncrease --> DemandDecrease
+    SupplyIncrease --> MarketEquilibrium
+    DemandDecrease --> MarketEquilibrium
+    MarketEquilibrium --> FinalPrice
+
+**Why good**: Shows the dynamic relationship and feedback loops.
+
+## BAD EXAMPLES TO AVOID:
+
+**Bad**: Linear text-following
+
+```mermaid
+graph TD
+    Mitosis --> Prophase
+    Prophase --> Metaphase
+    Metaphase --> Anaphase
+**Why bad**: Just follows text order, doesn't show WHY or HOW.
+
+**Bad**: Generic concepts
+```mermaid
+graph TD
+    Process --> Step1
+    Step1 --> Step2
+    Step2 --> Result
+**Why bad**: No specific terminology, could apply to anything.
+
+**Bad**: No real relationships
+```mermaid
+graph TD
+    Topic --> Concept1
+    Topic --> Concept2
+    Topic --> Concept3
+**Why bad**: Just lists items, shows no meaningful connections.
+
+CRITICAL: Return ONLY Mermaid diagrams. No explanations, no other text, no introductions.
+
+OUTPUT FORMAT:
+
+```mermaid
+graph TD
+    A[Main Concept] --> B[Related Idea]
+    B --> C[Result]
+"""
+
+
+
+DIAGRAM_GENERATION_PROMPT_DEPRECIATED = """
+You are an expert at creating clear, educational diagrams using mermaid syntax. Your task is to generate 2-3 simple Mermaid flowcharts showing the main concepts from this content.
+
+CONTENT:
+{content}
+
+SUMMARY:
+{summary}
+
+USER PROFILE:
+{learning_profile}
+
+RULES:
+- Use only: graph TD, [square brackets], and -->
+- Max 8 nodes per diagram
 - Keep labels short (1-4 words)
 - Show how concepts connect
 - Make it easy to follow
