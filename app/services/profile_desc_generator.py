@@ -1,21 +1,14 @@
-import os
 import logging
 from typing import List
-from openai import OpenAI
 from app.schemas.learning_profile import RatingAnswer, MCQAnswer
+from app.services.constants import LLAMA_3_70b
 from app.services.prompts import (
     get_learniing_style_prompt,
     LEARNING_PROFILE_SYSTEM_PROMPT,
 )
+from app.services.utils import get_openai_client
 
 logger = logging.getLogger(__name__)
-
-def get_openai_client():
-    """ Initialize and return the OpenAI client with Groq configuration. """
-    return OpenAI(
-        api_key=os.getenv("GROQ_API_KEY"),
-        base_url=os.getenv("GROQ_BASE_URL")
-    )
 
 
 async def generate_learning_profile_description(
@@ -42,7 +35,7 @@ async def generate_learning_profile_description(
         client = get_openai_client()
 
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model= LLAMA_3_70b,
             messages=[
                 {"role": "system", "content": LEARNING_PROFILE_SYSTEM_PROMPT},
                 {"role": "user", "content": prompt},

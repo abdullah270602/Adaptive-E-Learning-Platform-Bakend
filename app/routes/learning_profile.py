@@ -11,7 +11,7 @@ from app.schemas.learning_profile import (
     LearningProfileSubmission,
 )
 from app.schemas.learning_profile_form import LEARNING_PROFILE_FORM
-from app.services.llms import generate_learning_profile_description
+from app.services.profile_desc_generator import generate_learning_profile_description
 
 router = APIRouter(prefix="/learning-profile", tags=["Learning Profile"])
 

@@ -35,3 +35,17 @@ def has_learning_profile(conn: PGConnection, user_id: str) -> bool:
     with conn.cursor() as cursor:
         cursor.execute(query, (user_id,))
         return cursor.fetchone() is not None
+
+
+def get_learning_profile_by_user(conn: PGConnection, user_id: str) -> dict | None:
+    query = """
+    SELECT visual_score, reading_score, kinesthetic_score, primary_style, description
+    FROM learning_profiles
+    WHERE user_id = %s;
+    """
+
+    with conn.cursor(cursor_factory=DictCursor) as cursor:
+        cursor.execute(query, (user_id,))
+        result = cursor.fetchone()
+    
+    return dict(result) if result else None

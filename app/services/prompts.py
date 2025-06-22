@@ -76,8 +76,9 @@ You are a learning style analyst that specializes in creating personalized VRK (
 Your descriptions should be 150-200 words, professionally written but personal in tone, and focus on how the individual actually learns best rather than just listing their preferences.
 """
 
-def get_learniing_style_prompt( answers, vrk_scores, dominant_styles, behavioral_prefs):
-    
+
+def get_learniing_style_prompt(answers, vrk_scores, dominant_styles, behavioral_prefs):
+
     LEARNING_STYLE_PROMPT = f"""You are analyzing results from a VRK learning style assessment combined with behavioral preferences. Generate a comprehensive, personalized description of the user's learning style.
 
     **ASSESSMENT CONTEXT:**
@@ -121,5 +122,35 @@ def get_learniing_style_prompt( answers, vrk_scores, dominant_styles, behavioral
     "You exhibit a strong kinesthetic learning preference, demonstrating highest engagement when you can physically interact with material through hands-on activities and real-world problem solving. Your preference for evening study sessions with background music creates an environment that supports your need for dynamic, active learning experiences..."
 
     Generate the learning style description now:"""
-    
+
     return LEARNING_STYLE_PROMPT
+
+
+DIAGRAM_GENERATION_PROMPT = """
+You are an expert at creating clear, educational diagrams using mermaid syntax. Your task is to generate 2-3 simple Mermaid flowcharts showing the main concepts from this content.
+
+CONTENT:
+{content}
+
+SUMMARY:
+{summary}
+
+USER PROFILE:
+{learning_profile}
+
+RULES:
+- Use only: graph TD, [square brackets], and -->
+- Max 8 nodes per diagram
+- Keep labels short (1-4 words)
+- Show how concepts connect
+- Make it easy to follow
+
+CRITICAL: Return ONLY Mermaid diagrams. No explanations, no other text, no introductions.
+
+OUTPUT FORMAT:
+
+```mermaid
+graph TD
+    A[Main Concept] --> B[Related Idea]
+    B --> C[Result]
+"""

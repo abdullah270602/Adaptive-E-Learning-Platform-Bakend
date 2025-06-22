@@ -8,8 +8,9 @@ from app.database.book_queries import create_book_structure
 from app.database.connection import PostgresConnection
 import logging
 import base64
-from app.services.llms import get_openai_client
+from app.services.constants import LLAMA_3_70b
 from app.services.prompts import TOC_EXTRACTION_PROMPT
+from app.services.utils import get_openai_client
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +96,7 @@ async def process_toc_with_llm(text: str) -> dict:
         client = get_openai_client()
 
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",  # TODO make this into a config variable
+            model=LLAMA_3_70b,
             messages=[
                 {"role": "system", "content": TOC_EXTRACTION_PROMPT},
                 {"role": "user", "content": text},
