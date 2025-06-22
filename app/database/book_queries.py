@@ -210,3 +210,16 @@ def get_section_content_query(conn: PGConnection, section_id: UUID) -> dict:
     return dict(row)
 
 
+def delete_book_by_id(conn: PGConnection, book_id: str, user_id: str) -> None:
+    query = "DELETE FROM books WHERE id = %s AND user_id = %s;"
+    with conn.cursor() as cursor:
+        cursor.execute(query, (book_id, user_id))
+    conn.commit()
+
+
+def get_book_by_id(conn: PGConnection, book_id: str, user_id: str) -> Optional[dict]:
+    query = "SELECT * FROM books WHERE id = %s AND user_id = %s;"
+    with conn.cursor(cursor_factory=DictCursor) as cursor:
+        cursor.execute(query, (book_id, user_id))
+        result = cursor.fetchone()
+    return dict(result) if result else None

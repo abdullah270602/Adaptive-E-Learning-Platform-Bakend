@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 from uuid import UUID, uuid4
 from psycopg2.extensions import connection as PGConnection
 from psycopg2.extras import DictCursor
@@ -48,3 +48,18 @@ def get_slides_by_user(conn: PGConnection, user_id: UUID) -> List[dict]:
         results = cursor.fetchall()
 
     return [{"type": "presentation", **dict(row)} for row in results]
+
+
+def delete_slide_by_id(conn: PGConnection, slide_id: str, user_id: str) -> None:
+    query = "DELETE FROM presentations WHERE id = %s AND user_id = %s;"
+    with conn.cursor() as cursor:
+        cursor.execute(query, (slide_id, user_id))
+    conn.commit()
+
+
+def get_slide_by_id(conn: PGConnection, slide_id: str, user_id: str) -> Optional[dict]:
+    query = "SELECT * FROM presentations WHERE id = %s AND user_id = %s;"
+    with conn.cursor(cursor_factory=DictCursor) as cursor:
+        cursor.execute(query, (slide_id, user_id))
+        result = cursor.fetchone()
+    return dict(result) if result else None

@@ -13,6 +13,7 @@ from app.database.book_queries import (
 )
 from app.database.connection import PostgresConnection
 from app.database.slides_queries import create_slide_query, get_slides_by_user
+from app.services.delete_service import delete_document_and_assets
 from app.services.minio_client import MinIOClientContext
 from app.services.book_processor import process_toc_pages
 
@@ -184,3 +185,28 @@ async def list_user_slides(current_user: str = Depends(get_current_user)):
     except Exception as e:
         logging.error(f"[Slides] Failed to fetch presentations for user {current_user}: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to retrieve presentation list")
+    
+
+@router.delete("/delete/{document_type}/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_file(
+    document_type: str,
+    document_id: str,
+    current_user: str = Depends(get_current_user),
+):
+    """
+    Deletes any document type: book, slides, notes
+    """
+    try:
+        deleted = delete_document_and_assets(
+            document_type=document_type,
+            document_id=document_id,
+            user_id=current_user,
+        )
+        if not deleted:
+            raise HTTPException(status_code=404, detail=f"{document_type.capitalize()} not found or not owned by user")
+
+        return {"message": f"{document_type.capitalize()} deleted successfully"}
+
+    except Exception as e:
+        logging.error(f"[Delete] Failed to delete {document_type}: {e}")
+        raise HTTPException(status_code=500, detail="Deletion failed.")
