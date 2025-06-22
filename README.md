@@ -2,7 +2,7 @@
 ## 📚 Adaptive Learning Platform – Backend
 
 A FastAPI backend using Google OAuth2 authentication, PostgreSQL (Neon), and MinIO for file storage.
-Project dependencies are managed using [`uv`](https://github.com/astral-sh/uv), with optional support for `pip`.
+Project dependencies are managed using [`uv`](https://github.com/astral-sh/uv).
 
 ---
 
