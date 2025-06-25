@@ -1,5 +1,5 @@
 # app/auth/dependencies.py
-from fastapi import Depends, HTTPException, Request
+from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.auth.utils import decode_access_token
 from psycopg2.extensions import connection as PGConnection
@@ -13,7 +13,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     token = credentials.credentials
     payload = decode_access_token(token)
     if not payload:
-        raise HTTPException(status_code=401, detail="Invalid token")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
     return payload["sub"]
 
 

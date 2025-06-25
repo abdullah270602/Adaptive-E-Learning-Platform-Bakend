@@ -1,9 +1,11 @@
 import logging
-from fastapi import APIRouter, Request, HTTPException
-from app.auth.dependencies import get_or_create_user
+from fastapi import APIRouter, Depends, Request, HTTPException, status
+from app.auth.dependencies import get_current_user, get_or_create_user
 from app.auth.google_auth import oauth, get_google_user_info
 from app.auth.utils import create_access_token
 from app.database.connection import PostgresConnection
+from jose import jwt, JWTError
+from fastapi.security import HTTPBearer
 
 logger = logging.getLogger(__name__)
 
@@ -50,3 +52,7 @@ async def auth_callback(request: Request):
         logger.exception("Error during OAuth callback")
         raise HTTPException(status_code=500, detail="Authentication failed. Please try again.")
 
+
+@router.get("/auth/validate")
+async def validate_token(user_id: str = Depends(get_current_user)):
+    return {"status": "valid", "user_id": user_id}
