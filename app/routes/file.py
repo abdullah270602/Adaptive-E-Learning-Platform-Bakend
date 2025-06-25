@@ -34,6 +34,13 @@ async def upload_file(
     current_user: str = Depends(get_current_user),
 ):
     try:
+        if document_type == "notes":
+            return {
+                "type": document_type,
+                "notes_id": "",
+                "title": "",
+                "content": "Notes feature is not implemented yet.",
+            }
         # Validate file extension
         ext = file.filename.split(".")[-1].lower()
         if document_type == "book" and ext != "pdf":

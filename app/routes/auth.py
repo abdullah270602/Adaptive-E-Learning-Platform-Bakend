@@ -4,8 +4,6 @@ from app.auth.dependencies import get_current_user, get_or_create_user
 from app.auth.google_auth import oauth, get_google_user_info
 from app.auth.utils import create_access_token
 from app.database.connection import PostgresConnection
-from jose import jwt, JWTError
-from fastapi.security import HTTPBearer
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +45,8 @@ async def auth_callback(request: Request):
             "access_token": token,
             "token_type": "bearer",
         }
+
+        # TODO Respond with set_cookie header for security
 
     except Exception as e:
         logger.exception("Error during OAuth callback")
