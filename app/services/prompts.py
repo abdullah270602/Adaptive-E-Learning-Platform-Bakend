@@ -140,7 +140,7 @@ USER PROFILE:
 
 RULES:
 - Use only: graph TD, [square brackets], and -->
-- Max 8 nodes per diagram
+- Max 10 nodes per diagram
 - Keep labels short (1-4 words) but MEANINGFUL
 - Extract SPECIFIC terms, formulas, and concepts from the content
 - Show logical relationships: causes → effects, steps → outcomes, parts → wholes
