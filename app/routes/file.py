@@ -30,7 +30,7 @@ router = APIRouter(prefix="/file", tags=["Files"])
 async def upload_file(
     file: UploadFile = File(...),
     document_type: str = Form(...),  # "book", "presentation", "notes"
-    toc_pages: str = Form(None),
+    toc_pages: str = Form(None), # TODO Add validation for this field
     current_user: str = Depends(get_current_user),
 ):
     try:

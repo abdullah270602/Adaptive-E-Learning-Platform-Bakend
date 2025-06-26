@@ -29,3 +29,13 @@ def create_user(conn: PGConnection, email: str, name: str, profile_pic: str = No
         conn.commit()
 
     return dict(user)
+
+
+def get_user_by_id(conn: PGConnection, id: str) -> dict | None:
+    query = "SELECT id, name, email, profile_pic FROM users WHERE id = %s;"
+    
+    with conn.cursor(cursor_factory=DictCursor) as cursor:
+        cursor.execute(query, (id,))
+        result = cursor.fetchone()
+        
+        return dict(result) if result else None
