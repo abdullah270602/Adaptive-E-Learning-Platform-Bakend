@@ -6,8 +6,9 @@ import logging
 logger = logging.getLogger(__name__)
 
 ALGORITHM = "HS256"
+TOKEN_EXP_TIME = timedelta(minutes=10080)  # 7 days
 
-def create_access_token(user: dict, expires_delta: timedelta = timedelta(minutes=60)) -> str:
+def create_access_token(user: dict, expires_delta: timedelta = TOKEN_EXP_TIME) -> str:
     try:
         to_encode = {
             "sub": str(user["id"]),
