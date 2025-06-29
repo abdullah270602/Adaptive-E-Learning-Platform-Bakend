@@ -184,6 +184,7 @@ async def get_section_content(
 @router.get("/slides", status_code=status.HTTP_200_OK)
 async def list_user_slides(current_user: str = Depends(get_current_user)):
     try:
+        presentations = []
         with PostgresConnection() as conn:
             presentations = get_slides_by_user(conn, current_user)
 
