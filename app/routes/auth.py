@@ -1,10 +1,13 @@
+import json
 import logging
 from fastapi import APIRouter, Depends, Request, HTTPException, status
+from fastapi.responses import RedirectResponse
 from app.auth.dependencies import get_current_user, get_or_create_user
 from app.auth.google_auth import oauth, get_google_user_info
 from app.auth.utils import create_access_token
 from app.database.auth_queries import get_user_by_id
 from app.database.connection import PostgresConnection
+from app.routes.constants import FRONTEND_DOMAIN
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +17,14 @@ router = APIRouter(tags=["auth"])
 async def login(request: Request):
     try:
         redirect_uri = request.url_for("auth_callback")
-        return await oauth.google.authorize_redirect(request, redirect_uri)
+        
+        # Extract redirect_origin from query param
+        redirect_origin = request.query_params.get("redirect_origin", FRONTEND_DOMAIN)
+
+        # Encode into state (as a JSON string or URL-encoded string)
+        state = json.dumps({"redirect_origin": redirect_origin})
+        
+        return await oauth.google.authorize_redirect(request, redirect_uri, state=state)
     
     except Exception as e:
         logger.exception("Error during Google login redirect")
@@ -42,12 +52,31 @@ async def auth_callback(request: Request):
 
         token = create_access_token(sanitized_user)
 
-        return {
-            "access_token": token,
-            "token_type": "bearer",
-        }
 
-        # TODO Respond with set_cookie header for security
+         # Read redirect_origin from OAuth state
+        state_str = request.query_params.get("state", "{}")
+        try:
+            state_data = json.loads(state_str)
+        except json.JSONDecodeError:
+            state_data = {}
+
+        redirect_origin = state_data.get("redirect_origin", FRONTEND_DOMAIN)
+
+        # if origin is localhost, make cookie less strict
+        # is_dev = "localhost" in redirect_origin
+        is_dev = True # TODO : remove this line in production
+
+        response = RedirectResponse(url=f"{redirect_origin}/dashboard")
+        response.set_cookie(
+            key="access_token",
+            value=token,
+            httponly=not is_dev,  # True in prod, False in dev
+            secure=not is_dev,    # True in prod, False in dev
+            samesite="Lax",
+            max_age=10080, # 7 days
+            path="/"
+        )
+        return response
 
     except Exception as e:
         logger.exception("Error during OAuth callback")
