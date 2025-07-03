@@ -64,14 +64,13 @@ async def auth_callback(request: Request):
 
         # if origin is localhost, make cookie less strict
         # is_dev = "localhost" in redirect_origin
-        is_dev = True # TODO : remove this line in production
 
         response = RedirectResponse(url=f"{redirect_origin}") # TODO redirect to dashboard or home page
         response.set_cookie(
             key="access_token",
             value=token,
-            httponly=not is_dev,  # True in prod, False in dev
-            secure=not is_dev,    # True in prod, False in dev
+            httponly=False,  # True in prod, False in dev
+            secure=False,    # True in prod, False in dev
             samesite="Lax",
             max_age=10080, # 7 days
             path="/"
