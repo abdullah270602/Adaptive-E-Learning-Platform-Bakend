@@ -70,8 +70,9 @@ async def auth_callback(request: Request):
             key="access_token",
             value=token,
             httponly=False,  # True in prod, False in dev
-            secure=False,    # True in prod, False in dev
-            samesite="Lax",
+            secure=True,    # True in prod, False in dev
+            samesite="None",
+            domain=".adaptivelearnai.xyz",  # 🧠 This allows sharing across subdomains
             max_age=10080, # 7 days
             path="/"
         )
