@@ -75,6 +75,7 @@ async def auth_callback(request: Request):
             max_age=10080, # 7 days
             path="/"
         )
+        logger.info("Setting cookie and redirecting to frontend")
         return response
 
     except Exception as e:
