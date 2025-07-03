@@ -65,7 +65,7 @@ async def auth_callback(request: Request):
         # if origin is localhost, make cookie less strict
         # is_dev = "localhost" in redirect_origin
 
-        response = RedirectResponse(url=f"{redirect_origin}") # TODO redirect to dashboard or home page
+        response = RedirectResponse(url=f"{redirect_origin}/dashboard")
         response.set_cookie(
             key="access_token",
             value=token,
