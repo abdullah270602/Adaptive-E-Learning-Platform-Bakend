@@ -66,7 +66,7 @@ async def auth_callback(request: Request):
         # is_dev = "localhost" in redirect_origin
         is_dev = True # TODO : remove this line in production
 
-        response = RedirectResponse(url=f"{redirect_origin}/dashboard")
+        response = RedirectResponse(url=f"{redirect_origin}") # TODO redirect to dashboard or home page
         response.set_cookie(
             key="access_token",
             value=token,
