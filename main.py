@@ -9,6 +9,7 @@ from app.routes.file import router as file_router
 from app.routes.auth import router as auth_router
 from app.routes.learning_profile import router as learning_profile_router
 from app.routes.diagrams import router as diagrams_router
+from app.routes.game import router as game_router
 import logging
 
 logging.basicConfig(
@@ -42,3 +43,4 @@ app.include_router(file_router)
 app.include_router(auth_router)
 app.include_router(learning_profile_router)
 app.include_router(diagrams_router)
+app.include_router(game_router)
