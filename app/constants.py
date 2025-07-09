@@ -3,4 +3,5 @@ ALLOWED_ORIGINS = [
     "http://localhost:3000/",
     "https://adaptivelearnai.xyz",
     "https://www.adaptivelearnai.xyz",
+    "https://fyp-frontend-chi-blush.vercel.app",
 ]
