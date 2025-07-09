@@ -2,6 +2,7 @@ import logging
 from typing import List
 from app.schemas.learning_profile import RatingAnswer, MCQAnswer
 from app.services.constants import LLAMA_3_70b
+from app.services.models import get_client_for_service
 from app.services.prompts import (
     get_learniing_style_prompt,
     LEARNING_PROFILE_SYSTEM_PROMPT,
@@ -32,10 +33,10 @@ async def generate_learning_profile_description(
             behavioral_prefs=behavioral,
         )
 
-        client = get_openai_client()
+        client = get_client_for_service() # TODO ADD service var when implemented
 
         response = client.chat.completions.create(
-            model= LLAMA_3_70b,
+            model= LLAMA_3_70b, # TODO which ever model is best for this choose that
             messages=[
                 {"role": "system", "content": LEARNING_PROFILE_SYSTEM_PROMPT},
                 {"role": "user", "content": prompt},

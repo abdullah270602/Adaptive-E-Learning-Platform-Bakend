@@ -13,7 +13,7 @@ from app.database.book_queries import (
 )
 from app.database.connection import PostgresConnection
 from app.database.slides_queries import create_slide_query, get_slides_by_user
-from app.services.delete_service import delete_document_and_assets
+from app.services.delete import delete_document_and_assets
 from app.services.minio_client import MinIOClientContext
 from app.services.book_processor import process_toc_pages
 

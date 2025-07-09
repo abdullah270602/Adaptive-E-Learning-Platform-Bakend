@@ -26,7 +26,7 @@ def get_model_name_and_provider_by_id(conn: PGConnection, model_id: UUID) -> str
     Retrieve the model name and provider by its ID.
     """
     query = """
-    SELECT model_name, provider
+    SELECT model_name, serivce
     FROM models
     WHERE id = %s AND is_active = TRUE;
     """

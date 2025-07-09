@@ -1,8 +1,8 @@
 import re
 import logging
 from app.services.constants import LLAMA_3_70b
+from app.services.models import get_client_for_service
 from app.services.prompts import DIAGRAM_GENERATION_PROMPT
-from app.services.utils import get_openai_client
 
 logger = logging.getLogger(__name__)
 
@@ -36,10 +36,10 @@ async def generate_diagrams(content: str, summary: str, learning_profile: str) -
     )
 
     try:
-        client = get_openai_client()
+        client = get_client_for_service("huggingface")
 
         response = client.chat.completions.create(
-            model= LLAMA_3_70b,
+            model="Qwen/Qwen2-7B-Instruct", # FIXME Make this dynamic
             messages=[
                 {"role": "system", "content": "You are a helpful assistant that generates learning diagrams using Mermaid syntax."},
                 {"role": "user", "content": prompt}

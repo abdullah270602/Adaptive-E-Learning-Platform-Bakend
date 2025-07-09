@@ -1,10 +1,9 @@
 import re
 from fastapi import HTTPException
 import logging
-
 from app.services.constants import LLAMA_3_70b
+from app.services.models import get_client_for_service
 from app.services.prompts import GAME_CODE_PROMPT, GAME_CODE_PROMPT_OLD, GAME_IDEA_PROMPT
-from app.services.utils import get_openai_client
 
 
 logger = logging.getLogger(__name__)
@@ -16,9 +15,9 @@ def generate_game_idea(content: str, learning_profile: str,):
             learning_profile=learning_profile
         )
         
-        client = get_openai_client()
+        client = get_client_for_service() # TODO ADD service var when implemented
         response = client.chat.completions.create(
-            model= LLAMA_3_70b,
+            model= LLAMA_3_70b, # FIXME Make this dynamic
             messages=[
                 {"role": "system", "content": "You are an expert educational game designer."},
                 {"role": "user", "content": prompt}
