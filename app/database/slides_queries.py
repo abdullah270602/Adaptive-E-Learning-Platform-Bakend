@@ -63,3 +63,16 @@ def get_slide_by_id(conn: PGConnection, slide_id: str, user_id: str) -> Optional
         cursor.execute(query, (slide_id, user_id))
         result = cursor.fetchone()
     return dict(result) if result else None
+
+
+def get_slide_metadata(conn: PGConnection, slide_id: str) -> Optional[dict]:
+    query = """
+    SELECT id, user_id, title, original_filename, total_slides AS total_pages, created_at
+    FROM presentations
+    WHERE id = %s;
+    """
+    with conn.cursor(cursor_factory=DictCursor) as cursor:
+        cursor.execute(query, (slide_id,))
+        result = cursor.fetchone()
+
+    return dict(result) if result else None

@@ -223,3 +223,16 @@ def get_book_by_id(conn: PGConnection, book_id: str, user_id: str) -> Optional[d
         cursor.execute(query, (book_id, user_id))
         result = cursor.fetchone()
     return dict(result) if result else None
+
+
+def get_book_metadata(conn: PGConnection, book_id: str) -> Optional[dict]:
+    query = """
+    SELECT id, user_id, title, file_name, created_at
+    FROM books
+    WHERE id = %s;
+    """
+    with conn.cursor(cursor_factory=DictCursor) as cursor:
+        cursor.execute(query, (book_id,))
+        result = cursor.fetchone()
+
+    return dict(result) if result else None

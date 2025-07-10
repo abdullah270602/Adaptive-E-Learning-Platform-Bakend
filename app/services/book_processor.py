@@ -1,5 +1,5 @@
 import re
-from typing import Dict, List
+from typing import Optional
 from fastapi import HTTPException
 import fitz  # PyMuPDF
 from PIL import Image
@@ -9,8 +9,12 @@ from app.database.connection import PostgresConnection
 import logging
 import base64
 from app.services.constants import LLAMA_3_70b
+from app.services.models import get_client_for_service
 from app.services.prompts import TOC_EXTRACTION_PROMPT
-from app.services.utils import get_openai_client
+from psycopg2.extensions import connection as PGConnection
+
+from app.database.book_queries import get_book_metadata
+from app.database.slides_queries import get_slide_metadata
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +97,7 @@ async def process_toc_with_llm(text: str) -> dict:
         #     } for img in images
         # ]
 
-        client = get_openai_client()
+        client = get_client_for_service("groq") # TODO add the image model form huggingface for toc and fallback if wrong toc given
 
         response = client.chat.completions.create(
             model=LLAMA_3_70b,
@@ -139,3 +143,14 @@ async def process_toc_pages(
     except Exception as e:
         logging.error(f"[TOC] Failed in process_toc_pages_postgres: {e}")
         raise HTTPException(status_code=500, detail="TOC processing failed.")
+
+
+def get_doc_metadata(conn: PGConnection, document_id: str, document_type: str) -> Optional[dict]:
+    if document_type == "book":
+        return get_book_metadata(conn, document_id)
+    elif document_type == "slide":
+        return get_slide_metadata(conn, document_id)
+    elif document_type == "note":
+        return "Notes Meta data not implemented yet"
+    else:
+        raise ValueError(f"Unknown document type: {document_type}")
