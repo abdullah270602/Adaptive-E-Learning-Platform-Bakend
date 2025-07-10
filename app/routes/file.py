@@ -206,7 +206,7 @@ def delete_file(
     """
     try:
         deleted = delete_document_and_assets(
-            document_type=document_type,
+            document_type=document_type.lower(),
             document_id=document_id,
             user_id=current_user,
         )
