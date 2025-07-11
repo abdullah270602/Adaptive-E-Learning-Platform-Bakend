@@ -37,7 +37,7 @@ def create_book_structure(
             chapter_id = str(uuid4())
             chapter_title = chapter.get("title", "Untitled Chapter")
             chapter_number = extract_chapter_number(chapter_title)
-            
+
             # Insert chapter
             cursor.execute(
                 """
@@ -48,8 +48,17 @@ def create_book_structure(
             )
 
             section_ids = []
+            sections = chapter.get("sections", [])
 
-            for section in chapter.get("sections", []):
+            if not sections:
+                # Fallback section using the chapter itself
+                fallback_section = {
+                    "title": chapter_title,
+                    "page": chapter.get("page", None),  # Optional fallback
+                }
+                sections = [fallback_section]
+
+            for section in sections:
                 section_id = str(uuid4())
                 section_title = section.get("title", "Untitled Section")
                 section_page = section.get("page", None)
