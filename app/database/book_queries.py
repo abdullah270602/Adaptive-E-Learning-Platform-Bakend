@@ -236,7 +236,7 @@ def get_book_by_id(conn: PGConnection, book_id: str, user_id: str) -> Optional[d
 
 def get_book_metadata(conn: PGConnection, book_id: str) -> Optional[dict]:
     query = """
-    SELECT id, user_id, title, file_name, created_at
+    SELECT id, user_id, title, file_name, s3_key, created_at
     FROM books
     WHERE id = %s;
     """
