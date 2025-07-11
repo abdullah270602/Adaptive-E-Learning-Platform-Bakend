@@ -1,3 +1,4 @@
+from io import BytesIO
 import logging
 import boto3
 import os
@@ -22,3 +23,11 @@ class MinIOClientContext:
         if exc_type:
             print(f"MinIO client context exited with error: {exc_val}")
         return False
+
+
+def get_file_from_minio(client: MinIOClientContext, s3_key: str, bucket: str = os.getenv("MINIO_BUCKET_NAME")) -> BytesIO:
+    try:
+        obj = client.get_object(Bucket=bucket, Key=s3_key)
+        return obj["Body"]
+    except Exception as e:
+        raise RuntimeError(f"MinIO fetch failed: {e}")
