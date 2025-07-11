@@ -12,6 +12,7 @@ from app.routes.diagrams import router as diagrams_router
 from app.routes.game import router as game_router
 from app.routes.models import router as models_router
 from app.routes.study_mode import router as study_mode_router
+from app.routes.streaks import router as streaks_router
 import logging
 
 logging.basicConfig(
@@ -48,3 +49,4 @@ app.include_router(diagrams_router)
 app.include_router(game_router)
 app.include_router(models_router)
 app.include_router(study_mode_router)
+app.include_router(streaks_router)
