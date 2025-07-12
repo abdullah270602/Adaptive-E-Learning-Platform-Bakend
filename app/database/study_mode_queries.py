@@ -1,6 +1,7 @@
 from psycopg2.extensions import connection as PGConnection
 from psycopg2.extras import DictCursor
 from uuid import uuid4
+from app.schemas.chat import ChatMessageCreate
 
 
 def get_or_create_chat_session(
@@ -74,3 +75,29 @@ def update_document_progress(
             ),
         )
         conn.commit()
+
+
+def insert_chat_message(
+    conn: PGConnection, data: ChatMessageCreate, role: str = "user"
+) -> dict:
+    with conn.cursor(cursor_factory=DictCursor) as cursor:
+        cursor.execute(
+            """
+            INSERT INTO chat_messages (
+                chat_session_id, role, content, model_id
+            )
+            VALUES (%s, %s, %s, %s)
+            RETURNING *
+            """,
+            (
+                str(data.chat_session_id),
+                role,
+                data.content,
+                str(data.model_id) if data.model_id else None,
+            ),
+        )
+        result = cursor.fetchone()
+    
+    conn.commit()
+    
+    return dict(result)

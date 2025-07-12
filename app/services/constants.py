@@ -1,5 +1,7 @@
 LLAMA_3_70b = "llama-3.3-70b-versatile"
-
+SYSTEM_ROLE = "system"
+USER_ROLE = "user"
+ASSISTANT_ROLE = "assistant"
 
 SERVICE_CONFIG = {
     "groq": {

@@ -8,11 +8,14 @@ from app.database.connection import PostgresConnection
 from app.database.study_mode_queries import (
     get_or_create_chat_session,
     get_last_position,
+    insert_chat_message,
     update_document_progress
 )
+from app.schemas.chat import ChatMessageCreate
 from app.schemas.document_progress import DocumentProgressUpdate
 from app.services.book_processor import get_doc_metadata
 from app.services.minio_client import MinIOClientContext, get_file_from_minio
+from app.services.models import get_reply_from_model
 
 logger = logging.getLogger(__name__)
 
@@ -91,3 +94,32 @@ def update_last_position(
         )
 
     return {"message": "Last position saved."}
+
+
+@router.post("/chat/message", status_code=status.HTTP_201_CREATED)
+def create_chat_message(request: ChatMessageCreate, current_user: str = Depends(get_current_user)):
+    try:
+        with PostgresConnection() as conn:
+            user_message = insert_chat_message(conn, request, "user")
+            
+        
+        DEFAULT_MODEL = "d50a33ce-2462-4a5a-9aa7-efc2d1749745"
+        
+        if not request.model_id:
+            current_model = DEFAULT_MODEL
+            
+        chat = [{"role" : "user", "content" : request.content}]
+        
+        llm_response = get_reply_from_model(
+                model_id=current_model, chat=chat
+            )
+        
+        llm_reply = ChatMessageCreate(chat_session_id=request.chat_session_id, content=llm_response, model_id=current_model)
+        with PostgresConnection() as conn:
+            insert_chat_message(conn, llm_reply, "assistant")
+        
+        return {"message": "This under dev", "user_message": user_message, "llm_reply": llm_reply}
+        
+    except Exception as e:
+        logger.error(f"[Study Mode] Failed to create chat message: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to create chat message")
