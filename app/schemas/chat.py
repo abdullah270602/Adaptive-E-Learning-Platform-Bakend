@@ -9,6 +9,6 @@ class ChatMessageCreate(BaseModel):
     content: str
     current_page: int
     model_id: Optional[UUID] = Field(default=None)
-    section_id: Optional[UUID] = None
-    chapter_id: Optional[UUID] = None
+    section_name: Optional[str] = None
+    chapter_name: Optional[str] = None
 
