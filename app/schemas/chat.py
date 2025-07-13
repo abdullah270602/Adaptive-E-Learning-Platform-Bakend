@@ -7,8 +7,8 @@ class ChatMessageCreate(BaseModel):
     document_id: UUID
     document_type: str
     content: str
-    model_id: int
-    current_page: Optional[int] = None
+    current_page: int
+    model_id: Optional[UUID] = Field(default=None)
     section_id: Optional[UUID] = None
     chapter_id: Optional[UUID] = None
 
