@@ -134,8 +134,8 @@ async def handle_chat_message(payload: ChatMessageCreate, user_id: UUID) -> str:
 
     except HTTPException:
         raise
-    except Exception as unknown_error:
-        logger.critical(f"Unexpected error in handle_chat_message: {unknown_error}", exc_info=True)
+    except Exception as e:
+        logger.critical(f"Unexpected error in handle_chat_message: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Unexpected error while processing chat message.")
 
 
