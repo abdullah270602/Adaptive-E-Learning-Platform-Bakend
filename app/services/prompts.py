@@ -554,9 +554,8 @@ Generate the complete game code now:
 """
 
 
-
-
-GAME_CODE_PROMPT_OLD = """Create a fully functional React component for the following game idea that integrates concepts from multiple learning materials:
+GAME_CODE_PROMPT_OLD = """
+Create a fully functional React component for the following game idea that integrates concepts from multiple learning materials:
 
     {game_idea}
 
