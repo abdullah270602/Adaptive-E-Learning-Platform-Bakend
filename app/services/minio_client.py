@@ -31,3 +31,16 @@ def get_file_from_minio(client: MinIOClientContext, s3_key: str, bucket: str = o
         return obj["Body"]
     except Exception as e:
         raise RuntimeError(f"MinIO fetch failed: {e}")
+    
+    
+
+def get_pdf_bytes_from_minio(client: MinIOClientContext, s3_key: str, bucket: str = os.getenv("MINIO_BUCKET_NAME")) -> BytesIO:
+    """
+    For internal PDF parsing (e.g. PyMuPDF). Returns BytesIO stream.
+    """
+    try:
+        obj = client.get_object(Bucket=bucket, Key=s3_key)
+        byte_stream = obj["Body"].read()  # read() returns full bytes
+        return BytesIO(byte_stream)
+    except Exception as e:
+        raise RuntimeError(f"MinIO PDF bytes fetch failed: {e}")

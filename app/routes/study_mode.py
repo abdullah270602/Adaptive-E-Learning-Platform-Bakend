@@ -1,6 +1,7 @@
+from datetime import datetime
 import logging
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from app.auth.dependencies import get_current_user
 from app.database.book_queries import get_book_structure_query
@@ -8,14 +9,15 @@ from app.database.connection import PostgresConnection
 from app.database.study_mode_queries import (
     get_or_create_chat_session,
     get_last_position,
-    insert_chat_message,
     update_document_progress
 )
-from app.schemas.chat import ChatMessageCreate
+from app.schemas.chat import ChatMessageCreate, ChatMessageResponse
 from app.schemas.document_progress import DocumentProgressUpdate
 from app.services.book_processor import get_doc_metadata
+from app.services.constants import ASSISTANT_ROLE
 from app.services.minio_client import MinIOClientContext, get_file_from_minio
 from app.services.models import get_reply_from_model
+from app.services.study_mode import handle_chat_message, save_user_and_bot_messages
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +66,7 @@ def stream_document(document_id: str, document_type: str, current_user: str = De
     except Exception as e:
         import traceback; traceback.print_exc();
         raise HTTPException(status_code=500, detail=f"Error streaming document: {str(e)}")
-    
+
 
 @router.post("/documents/{document_id}/last-position", status_code=status.HTTP_200_OK)
 def update_last_position(
@@ -77,7 +79,6 @@ def update_last_position(
     page_number = request.page_number
     section_id = request.section_id
     chapter_id = request.chapter_id
-    
 
     if not document_type:
         raise HTTPException(status_code=400, detail="document_type is required.")
@@ -96,30 +97,36 @@ def update_last_position(
     return {"message": "Last position saved."}
 
 
-@router.post("/chat/message", status_code=status.HTTP_201_CREATED)
-def create_chat_message(request: ChatMessageCreate, current_user: str = Depends(get_current_user)):
+@router.post("/chat/message", status_code=status.HTTP_201_CREATED, response_model=ChatMessageResponse)
+async def create_chat_message(
+    request: ChatMessageCreate,
+    background_tasks: BackgroundTasks,
+    current_user: str = Depends(get_current_user),
+):
     try:
-        with PostgresConnection() as conn:
-            user_message = insert_chat_message(conn, request, "user")
-            
+        llm_reply = await handle_chat_message(request, current_user)
+
+        # Save both messages in the background
+        background_tasks.add_task(
+            save_user_and_bot_messages,
+            chat_session_id=request.chat_session_id,
+            user_msg=request.content,
+            llm_msg=llm_reply,
+            model_id=str(request.model_id),
+        )
         
-        DEFAULT_MODEL = "d50a33ce-2462-4a5a-9aa7-efc2d1749745"
-        
-        if not request.model_id:
-            current_model = DEFAULT_MODEL
-            
-        chat = [{"role" : "user", "content" : request.content}]
-        
-        llm_response = get_reply_from_model(
-                model_id=current_model, chat=chat
-            )
-        
-        llm_reply = ChatMessageCreate(chat_session_id=request.chat_session_id, content=llm_response, model_id=current_model)
-        with PostgresConnection() as conn:
-            insert_chat_message(conn, llm_reply, "assistant")
-        
-        return {"message": "This under dev", "user_message": user_message, "llm_reply": llm_reply}
-        
+        response = ChatMessageResponse(
+            chat_session_id=str(request.chat_session_id),
+            user_id=current_user,
+            role= ASSISTANT_ROLE,
+            content=llm_reply,
+            model_id=str(request.model_id),
+            tool_type=None,
+            tool_response_id=None,
+            created_at=datetime.utcnow(),
+        )
+
+        return response
+
     except Exception as e:
-        logger.error(f"[Study Mode] Failed to create chat message: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to create chat message")
+        raise HTTPException(status_code=500, detail=f"Chat failed: {e}")

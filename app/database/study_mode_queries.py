@@ -1,6 +1,6 @@
 from psycopg2.extensions import connection as PGConnection
 from psycopg2.extras import DictCursor
-from uuid import uuid4
+from uuid import UUID, uuid4
 from app.schemas.chat import ChatMessageCreate
 
 
@@ -77,27 +77,37 @@ def update_document_progress(
         conn.commit()
 
 
-def insert_chat_message(
-    conn: PGConnection, data: ChatMessageCreate, role: str = "user"
-) -> dict:
+def insert_chat_messages(conn: PGConnection, messages: list[dict]):
+    with conn.cursor(cursor_factory=DictCursor) as cursor:
+        for msg in messages:
+            cursor.execute(
+                """
+                INSERT INTO chat_messages (
+                    id, chat_session_id, role, content, model_id, 
+                    tool_response_id, tool_type, created_at
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    str(msg["id"]), msg["chat_session_id"], msg["role"],
+                    msg["content"], msg.get("model_id"),
+                    msg.get("tool_response_id"), msg.get("tool_type"), msg["created_at"]
+                )
+            )
+        conn.commit()
+
+def get_last_chat_messages(conn: PGConnection, chat_session_id: UUID, limit: int = 10) -> list[dict]:
     with conn.cursor(cursor_factory=DictCursor) as cursor:
         cursor.execute(
             """
-            INSERT INTO chat_messages (
-                chat_session_id, role, content, model_id
-            )
-            VALUES (%s, %s, %s, %s)
-            RETURNING *
+            SELECT role, content
+            FROM chat_messages
+            WHERE chat_session_id = %s
+            ORDER BY created_at DESC
+            LIMIT %s
             """,
-            (
-                str(data.chat_session_id),
-                role,
-                data.content,
-                str(data.model_id) if data.model_id else None,
-            ),
+            (str(chat_session_id), limit)
         )
-        result = cursor.fetchone()
-    
-    conn.commit()
-    
-    return dict(result)
+        messages = cursor.fetchall()
+        # Reverse to chronological order (oldest first)
+        return list(reversed(messages))

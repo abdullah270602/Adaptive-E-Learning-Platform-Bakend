@@ -643,4 +643,100 @@ Create a fully functional React component for the following game idea that integ
                     - Use getBoundingClientRect() to get accurate container dimensions
                     - Apply CSS transform-origin: top left when scaling
                                                                 
-            Generate the game code now, remember to not include any explanations or comments, just the code:"""
+            Generate the game code now, remember to not include any explanations or comments, just the code:
+"""
+
+
+TOOLS_AVAILABLE = {
+    "quiz": {
+        "name": "Quiz Generator",
+        "description": "Creates multiple-choice questions from content",
+        "args": ["topic", "count"],
+    },
+    "diagram": {
+        "name": "Diagram Creator",
+        "description": "Generates visual diagrams using mermaid syntax",
+        "args": ["topic"],
+    },
+    "flashcards": {
+        "name": "Flashcard Builder",
+        "description": "Makes flashcards for memorizing key concepts",
+        "args": ["count"],
+    },
+    "game": {
+        "name": "Mini Game",
+        "description": "Creates interactive learning games and challenges",
+        "args": ["topic", "game_idea"],
+    },
+}
+
+
+def build_chat_message_prompt(
+    learning_profile: str,
+    title: str,
+    page_content: str,
+    user_message: str,
+    chapter_name: str = None,
+    section_name: str = None,
+) -> list[dict]:
+
+    context_sections = []
+
+    context_sections.append(f"## Learning Context\nUser Profile: {learning_profile}")
+
+    if title:
+        context_sections.append(f"## Book: {title}")
+    if chapter_name:
+        context_sections.append(f"## Chapter: {chapter_name}")
+    if section_name:
+        context_sections.append(f"## Section: {section_name}")
+
+    context_sections.append(f"## Currently Page Content of the book\n```\n{page_content}\n```")
+    context_sections.append(f"## User Question\n{user_message}")
+
+    tool_instruction = f"""
+      ## Response Guidelines
+
+      You are an adaptive educational assistant (Adaptively) helping a learner understand the material above. 
+
+      **Primary Goal**: Provide clear, educational explanations that match the user's learning profile and directly address their question about the current content.
+
+      **Response Style**:
+      - Respond with confidence and authority about the material
+      - NEVER say "according to the text provided" or "based on the content given" 
+      - Act as if you naturally know this book and its content
+      - Reference specific concepts, chapters, or sections naturally (e.g., "In this chapter on photosynthesis..." not "According to the text about photosynthesis...")
+      - Make the user feel you're their knowledgeable tutor, not just reading from their materials
+      
+      **Tool Usage Policy**:
+      - Tools are available ONLY when they directly enhance learning for THIS specific question
+      - Do NOT use tools for general explanations, definitions, or concepts you can explain well
+      - Use tools ONLY when:
+        * User explicitly requests a calculation, visualization, or interactive element
+        * The question requires real-time data or external resources
+        * A tool would significantly improve comprehension of the current material
+
+      **Available Tools**:
+      {TOOLS_AVAILABLE}
+
+      **Response Format**:
+      1. First, provide a complete, helpful response to the user's question
+      2. Only if a tool would genuinely enhance the learning experience for THIS question, add:
+
+      TOOL_CALL: {{
+          "tool": "tool_name",
+          "args": {{
+              "key": "value"
+          }}
+      }}
+
+      **Remember**: Most educational questions can be answered excellently without tools. Focus on clear explanations first.
+      """
+
+    # Final system message
+    full_system_prompt = "\n\n".join(context_sections + [tool_instruction])
+
+    return [
+        {"role": "system", "content": full_system_prompt},
+        {"role": "user", "content": user_message},
+    ]

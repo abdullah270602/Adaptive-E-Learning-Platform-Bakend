@@ -2,6 +2,7 @@ LLAMA_3_70b = "llama-3.3-70b-versatile"
 SYSTEM_ROLE = "system"
 USER_ROLE = "user"
 ASSISTANT_ROLE = "assistant"
+DEFAULT_MODEL_ID = "d50a33ce-2462-4a5a-9aa7-efc2d1749745"
 
 SERVICE_CONFIG = {
     "groq": {
