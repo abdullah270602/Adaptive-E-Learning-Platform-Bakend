@@ -1,3 +1,4 @@
+import decimal
 import json
 import redis
 import os
@@ -40,7 +41,7 @@ class RedisClient:
     ) -> None:
         try:
             if isinstance(value, (dict, list)):
-                value = json.dumps(value)
+                value = json.dumps(value, default=self._json_serializer)
             self.client.set(key, value, ex=ttl)
             logger.info(f" Cached key {key} with TTL {ttl}")
         except Exception as e:
@@ -72,6 +73,13 @@ class RedisClient:
             self.client.flushall()
         except Exception as e:
             logger.error(" Failed to flush Redis DB: %s", e)
+            
+    @staticmethod
+    def _json_serializer(obj):
+        if isinstance(obj, decimal.Decimal):
+            return float(obj)
+        raise TypeError(f"Type {type(obj)} not serializable")
 
 
-redis_client = RedisClient()
+# redis_client = RedisClient()
+redis_client = None
