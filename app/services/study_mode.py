@@ -2,10 +2,10 @@ from fastapi import HTTPException
 import logging
 from uuid import UUID, uuid4
 from app.database.connection import PostgresConnection
-from app.database.learning_profile_queries import get_learning_profile_by_user
 from app.database.study_mode_queries import get_last_chat_messages, insert_chat_messages
 from app.schemas.chat import ChatMessageCreate
 from app.services.book_processor import get_doc_metadata
+from app.services.cache import get_learning_profile_with_cache
 from app.services.constants import DEFAULT_MODEL_ID
 from app.services.minio_client import MinIOClientContext, get_pdf_bytes_from_minio
 from app.services.models import get_reply_from_model
@@ -50,7 +50,7 @@ async def run_parallel_context_tasks(
 ):
     try:
         return await asyncio.gather(
-            asyncio.to_thread(get_learning_profile_by_user, conn, user_id),
+            asyncio.to_thread(get_learning_profile_with_cache, conn, user_id),
             asyncio.to_thread(get_page_content, document_id, page_number, conn, "book"),
             asyncio.to_thread(get_last_chat_messages, conn, chat_session_id),
         )

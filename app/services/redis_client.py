@@ -11,7 +11,7 @@ class RedisClient:
     def __init__(
         self,
         host=os.getenv("REDIS_HOST", "localhost"),
-        port=os.getenv("REDIS_PORT"),
+        port=os.getenv("REDIS_PORT", 6379),
         password=os.getenv("REDIS_PASSWORD"),
         db=0,
         decode_responses=True,
@@ -28,6 +28,7 @@ class RedisClient:
             self.client.ping()
             logger.info("Redis connection established.")
         except redis.exceptions.ConnectionError as e:
+            import traceback; traceback.print_exc();
             logger.critical(" Redis connection failed: %s", str(e))
             raise RuntimeError("Could not connect to Redis") from e
 
@@ -41,11 +42,13 @@ class RedisClient:
             if isinstance(value, (dict, list)):
                 value = json.dumps(value)
             self.client.set(key, value, ex=ttl)
+            logger.info(f" Cached key {key} with TTL {ttl}")
         except Exception as e:
             logger.error(f" Failed to cache key {key}: {e}")
 
     def get(self, key: str) -> Optional[str]:
         try:
+            logger.info(f" Retrieved key {key} from cache")
             return self.client.get(key)
         except Exception as e:
             logger.error(f" Failed to retrieve key {key}: {e}")
