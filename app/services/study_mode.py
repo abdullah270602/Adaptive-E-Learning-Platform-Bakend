@@ -122,10 +122,7 @@ async def handle_chat_message(payload: ChatMessageCreate, user_id: UUID) -> str:
             raise HTTPException(status_code=500, detail="Failed to construct model prompt.")
 
         try:
-            current_model = str(payload.model_id)
-            if not current_model:
-                current_model = DEFAULT_MODEL_ID
-            reply = get_reply_from_model(current_model, prompt)
+            reply = get_reply_from_model(str(payload.model_id), prompt)
             return reply
 
         except Exception as model_error:

@@ -3,7 +3,7 @@ import os
 from openai import OpenAI
 from app.database.connection import PostgresConnection
 from app.database.model_queries import get_active_model_name_and_service_by_id
-from app.services.constants import SERVICE_CONFIG, SYSTEM_ROLE
+from app.services.constants import DEFAULT_MODEL_ID, SERVICE_CONFIG, SYSTEM_ROLE
 
 
 logger = logging.getLogger(__name__)
