@@ -81,5 +81,4 @@ class RedisClient:
         raise TypeError(f"Type {type(obj)} not serializable")
 
 
-# redis_client = RedisClient()
-redis_client = None
+redis_client = RedisClient()
