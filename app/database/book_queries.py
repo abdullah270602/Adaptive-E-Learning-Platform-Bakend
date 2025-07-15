@@ -244,4 +244,4 @@ def get_book_metadata(conn: PGConnection, book_id: str) -> Optional[dict]:
         cursor.execute(query, (book_id,))
         result = cursor.fetchone()
 
-    return dict(result) if result else None
+    return dict(result) if result else {}

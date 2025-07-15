@@ -75,4 +75,4 @@ def get_slide_metadata(conn: PGConnection, slide_id: str) -> Optional[dict]:
         cursor.execute(query, (slide_id,))
         result = cursor.fetchone()
 
-    return dict(result) if result else None
+    return dict(result) if result else {}
