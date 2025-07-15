@@ -15,6 +15,7 @@ router = APIRouter(tags=["auth"])
 
 @router.get("/google/login")
 async def login(request: Request):
+    """ Login with google """
     try:
         redirect_uri = request.url_for("auth_callback")
         
@@ -33,6 +34,7 @@ async def login(request: Request):
 
 @router.get("/auth/callback")
 async def auth_callback(request: Request):
+    """ Callback for google login """
     try:
         user_info = await get_google_user_info(request)
         email = user_info["email"]
@@ -86,12 +88,13 @@ async def auth_callback(request: Request):
 
 @router.get("/auth/validate")
 async def validate_token(user_id: str = Depends(get_current_user)):
+    """ Validate token """
     return {"status": "valid", "user_id": user_id}
 
 
 @router.get("/user")
 async def get_user_info(current_user: str = Depends(get_current_user)):
-    
+    """ Get user info """
     try:
         with PostgresConnection() as conn:
             user = get_user_by_id(conn, current_user)
