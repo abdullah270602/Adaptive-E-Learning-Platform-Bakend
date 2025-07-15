@@ -155,7 +155,7 @@ async def list_user_books(
         raise HTTPException(status_code=500, detail="Failed to retrieve user books")
 
 
-@router.get("/book-structure/{book_id}", status_code=status.HTTP_200_OK)
+@router.get("/book-structure/{book_id}", status_code=status.HTTP_200_OK, deprecated=True)
 async def get_book_structure(
     book_id: uuid.UUID, current_user: str = Depends(get_current_user)
 ):
@@ -167,7 +167,7 @@ async def get_book_structure(
         raise HTTPException(status_code=500, detail="Failed to retrieve book structure")
 
 
-@router.get("/section/{section_id}", status_code=status.HTTP_200_OK)
+@router.get("/section/{section_id}", status_code=status.HTTP_200_OK, deprecated=True)
 async def get_section_content(
     section_id: uuid.UUID, current_user: str = Depends(get_current_user)
 ):
