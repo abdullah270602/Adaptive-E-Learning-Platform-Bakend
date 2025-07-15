@@ -1,3 +1,4 @@
+from datetime import datetime, date
 import decimal
 import json
 import redis
@@ -40,7 +41,7 @@ class RedisClient:
         ttl: int = 3600,
     ) -> None:
         try:
-            if isinstance(value, (dict, list)):
+            if not isinstance(value, str):
                 value = json.dumps(value, default=self._json_serializer)
             self.client.set(key, value, ex=ttl)
             logger.info(f" Cached key {key} with TTL {ttl}")
@@ -78,6 +79,8 @@ class RedisClient:
     def _json_serializer(obj):
         if isinstance(obj, decimal.Decimal):
             return float(obj)
+        if isinstance(obj, (datetime, date)):
+            return obj.isoformat()
         raise TypeError(f"Type {type(obj)} not serializable")
 
 

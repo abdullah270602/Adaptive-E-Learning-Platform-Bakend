@@ -4,9 +4,7 @@ from uuid import UUID, uuid4
 from app.database.connection import PostgresConnection
 from app.database.study_mode_queries import get_last_chat_messages, insert_chat_messages
 from app.schemas.chat import ChatMessageCreate
-from app.services.book_processor import get_doc_metadata
-from app.services.cache import get_learning_profile_with_cache
-from app.services.constants import DEFAULT_MODEL_ID
+from app.services.cache import get_cached_doc_metadata, get_learning_profile_with_cache
 from app.services.minio_client import MinIOClientContext, get_pdf_bytes_from_minio
 from app.services.models import get_reply_from_model
 from app.services.prompts import build_chat_message_prompt
@@ -34,7 +32,7 @@ def extract_text_from_page(pdf_stream: BytesIO, page_number: int, title: str = "
 
 def get_page_content(document_id: UUID, page_number: int, conn, document_type: str) -> str:
     try:
-        metadata = get_doc_metadata(conn, str(document_id), document_type)
+        metadata = get_cached_doc_metadata(conn, str(document_id), document_type)
         if not metadata or not metadata.get("s3_key"):
             raise ValueError("Missing document metadata or S3 key.")
         with MinIOClientContext() as s3:
