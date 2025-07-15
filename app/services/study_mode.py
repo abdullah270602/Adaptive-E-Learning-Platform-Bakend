@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 def extract_text_from_page(pdf_stream: BytesIO, page_number: int, title: str = "") -> str:
+    """ Extract text from a specific page of a PDF document."""
     try:
         doc = fitz.open(stream=pdf_stream, filetype="pdf")
         if page_number < 0 or page_number >= len(doc):
@@ -31,6 +32,7 @@ def extract_text_from_page(pdf_stream: BytesIO, page_number: int, title: str = "
 
 
 def get_page_content(document_id: UUID, page_number: int, conn, document_type: str) -> str:
+    """ Retrieve the content of a specific page from a document."""
     try:
         metadata = get_cached_doc_metadata(conn, str(document_id), document_type)
         if not metadata or not metadata.get("s3_key"):
@@ -46,6 +48,7 @@ def get_page_content(document_id: UUID, page_number: int, conn, document_type: s
 async def run_parallel_context_tasks(
     conn, user_id: UUID, document_id: UUID, page_number: int, chat_session_id: UUID
 ):
+    """ Run parallel tasks to fetch user learning profile, page content, and last chat messages."""
     try:
         return await asyncio.gather(
             asyncio.to_thread(get_learning_profile_with_cache, conn, user_id),
@@ -58,6 +61,7 @@ async def run_parallel_context_tasks(
 
 
 def save_user_and_bot_messages(chat_session_id, user_msg, llm_msg, model_id):
+    """ Save user and bot messages to the database."""
     now = datetime.utcnow()
     messages = [
         {
@@ -87,6 +91,7 @@ def save_user_and_bot_messages(chat_session_id, user_msg, llm_msg, model_id):
 
 
 async def handle_chat_message(payload: ChatMessageCreate, user_id: UUID) -> str:
+    """ Handle a chat message by fetching context, building a prompt, and getting a reply from the model."""
     try:
         with PostgresConnection() as conn:
             try:
