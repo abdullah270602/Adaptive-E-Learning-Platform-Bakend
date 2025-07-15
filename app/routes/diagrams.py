@@ -14,6 +14,7 @@ async def generate_diagram_endpoint(
     request: DiagramRequest,
     current_user: str = Depends(get_current_user)
 ):
+    """ Generate diagrams based on user request and learning profile"""
     try:
         with PostgresConnection() as conn:
             profile = get_learning_profile_by_user(conn, current_user)
