@@ -13,6 +13,7 @@ router = APIRouter(prefix="/models", tags=["Models"])
 
 @router.get("/list", status_code=status.HTTP_200_OK)
 async def list_models(current_user: str = Depends(get_current_user)):
+    """ Retrieve a list of all models available in the system """
     try:
         with PostgresConnection() as conn:
             rows = get_all_models(conn)
