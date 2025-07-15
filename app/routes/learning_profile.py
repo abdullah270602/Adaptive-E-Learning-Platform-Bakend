@@ -18,6 +18,7 @@ router = APIRouter(prefix="/learning-profile", tags=["Learning Profile"])
 
 @router.get("/form", status_code=status.HTTP_200_OK)
 async def get_learning_profile_form(current_user: str = Depends(get_current_user)):
+    """ Retrieve the learning profile form for the user """
     return LEARNING_PROFILE_FORM
 
 
@@ -25,6 +26,7 @@ async def get_learning_profile_form(current_user: str = Depends(get_current_user
 async def submit_learning_profile(
     submission: LearningProfileSubmission, current_user: str = Depends(get_current_user)
 ):
+    """ Process the learning profile submission and save it to the database """
     try:
         # Aggregate scores
         style_scores = {"Visual": 0, "ReadingWriting": 0, "Kinesthetic": 0}
@@ -79,6 +81,7 @@ async def submit_learning_profile(
 
 @router.get("/form/status", status_code=status.HTTP_200_OK)
 async def check_learning_profile_status(current_user: str = Depends(get_current_user)):
+    """ Check if the user has already submitted a learning profile """
     try:
         with PostgresConnection() as conn:
             exists = has_learning_profile(conn, current_user)
