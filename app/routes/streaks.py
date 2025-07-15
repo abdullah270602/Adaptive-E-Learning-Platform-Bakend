@@ -9,6 +9,7 @@ router = APIRouter(prefix="/streak", tags=["Streaks"])
 
 @router.post("/update", status_code=status.HTTP_201_CREATED)
 def update_streak(user_id: str = Depends(get_current_user)):
+    """ Update the user's streak based on their activity """
     try:
         with PostgresConnection() as conn:
             result = update_user_streak(conn, user_id)
@@ -28,6 +29,7 @@ def update_streak(user_id: str = Depends(get_current_user)):
 
 @router.get("", status_code=status.HTTP_200_OK)
 def get_user_streak_status(user_id: str = Depends(get_current_user)):
+    """ Retrieve the current streak status for the user """
     try:
         with PostgresConnection() as conn:
             data = get_user_streak(conn, user_id)
