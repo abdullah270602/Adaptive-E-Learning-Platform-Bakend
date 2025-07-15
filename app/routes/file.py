@@ -33,6 +33,7 @@ async def upload_file(
     toc_pages: str = Form(None), # TODO Add validation for this field
     current_user: str = Depends(get_current_user),
 ):
+    """ Uploads a file to the server and processes it based on the document type """
     try:
         if document_type == "notes":
             return {
@@ -143,6 +144,7 @@ async def upload_file(
 async def list_user_books(
     current_user: str = Depends(get_current_user),
 ):
+    """ List all books for the current user """
     try:
         with PostgresConnection() as conn:
 
@@ -183,6 +185,7 @@ async def get_section_content(
 
 @router.get("/slides", status_code=status.HTTP_200_OK)
 async def list_user_slides(current_user: str = Depends(get_current_user)):
+    """ List all presentations for the current user """
     try:
         presentations = []
         with PostgresConnection() as conn:
