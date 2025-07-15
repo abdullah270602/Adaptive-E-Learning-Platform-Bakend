@@ -13,10 +13,9 @@ from app.database.study_mode_queries import (
 )
 from app.schemas.chat import ChatMessageCreate, ChatMessageResponse
 from app.schemas.document_progress import DocumentProgressUpdate
-from app.services.book_processor import get_doc_metadata
+from app.services.cache import get_cached_doc_metadata
 from app.services.constants import ASSISTANT_ROLE
 from app.services.minio_client import MinIOClientContext, get_file_from_minio
-from app.services.models import get_reply_from_model
 from app.services.study_mode import handle_chat_message, save_user_and_bot_messages
 
 logger = logging.getLogger(__name__)
@@ -28,7 +27,7 @@ async def study_mode_init(document_id: str, document_type: str, current_user: st
     """ Initialize study mode for a specific document """
     try:
         with PostgresConnection() as conn:
-            doc = get_doc_metadata(conn, document_id, document_type)
+            doc = get_cached_doc_metadata(conn, document_id, document_type)
 
             if document_type != "book" and document_type != "presentation":
                 raise HTTPException(status_code=400, detail="Study mode is only supported for books and slides right now.")
@@ -54,7 +53,7 @@ def stream_document(document_id: str, document_type: str, current_user: str = De
     """ Stream the document content from S3 bucket """
     try:
         with PostgresConnection() as conn:
-            metadata = get_doc_metadata(conn, document_id, document_type)
+            metadata = get_cached_doc_metadata(conn, document_id, document_type)
 
         if not metadata or not metadata.get("s3_key"):
             raise HTTPException(status_code=404, detail="Document not found or missing S3 key")
