@@ -25,6 +25,7 @@ router = APIRouter(prefix="/study-mode", tags=["Study Mode"])
 
 @router.get("/init", status_code=status.HTTP_200_OK)
 async def study_mode_init(document_id: str, document_type: str, current_user: str = Depends(get_current_user)):
+    """ Initialize study mode for a specific document """
     try:
         with PostgresConnection() as conn:
             doc = get_doc_metadata(conn, document_id, document_type)
@@ -50,6 +51,7 @@ async def study_mode_init(document_id: str, document_type: str, current_user: st
 
 @router.get("/documents/{document_id}/stream")
 def stream_document(document_id: str, document_type: str, current_user: str = Depends(get_current_user)):
+    """ Stream the document content from S3 bucket """
     try:
         with PostgresConnection() as conn:
             metadata = get_doc_metadata(conn, document_id, document_type)
@@ -73,7 +75,7 @@ def update_last_position(
     request: DocumentProgressUpdate,
     user_id: str = Depends(get_current_user),
 ):
-    print(request)
+    """ Update the last read position for a document """
     document_id = request.document_id
     document_type = request.document_type
     page_number = request.page_number
@@ -103,6 +105,7 @@ async def create_chat_message(
     background_tasks: BackgroundTasks,
     current_user: str = Depends(get_current_user),
 ):
+    """ Handle a chat message from the user and get a reply from the model """
     try:
         llm_reply = await handle_chat_message(request, current_user)
 
