@@ -12,7 +12,7 @@ Project dependencies are managed using [`uv`](https://github.com/astral-sh/uv).
 
 ```bash
 git clone https://github.com/abdullah270602/Adaptive-E-Learning-Platform-Bakend
-cd fyp_backend
+cd into the dir
 ```
 
 ---
