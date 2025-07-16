@@ -49,12 +49,14 @@ async def upload_file(
         elif document_type == "slides" and ext != "pptx":
             raise HTTPException(status_code=400, detail="Slides must be in .pptx format.")
 
-
         # Save file temporarily
         unique_name = f"{uuid.uuid4()}_{file.filename}"
-        tmp_path = f"/tmp/{unique_name}"  # Use /tmp for Unix-like systems
-
-        # tmp_path = os.path.join(os.getenv("TMP", "temp"), unique_name) # Use when on windows
+    
+        if os.getenv("OS") == "Windows":
+            tmp_path = os.path.join(os.getenv("TMP", "temp"), unique_name) # Use when on windows
+            
+        else:
+            tmp_path = f"/tmp/{unique_name}"  # Use /tmp for Unix-like systems
 
         file_bytes = await file.read()  # Await first
         with open(tmp_path, "wb") as f:
