@@ -111,3 +111,20 @@ def get_last_chat_messages(conn: PGConnection, chat_session_id: UUID, limit: int
         messages = cursor.fetchall()
         # Reverse to chronological order (oldest first)
         return list(reversed(messages))
+
+
+def get_chat_history(conn: PGConnection, chat_session_id: UUID) -> list[dict]:
+    with conn.cursor(cursor_factory=DictCursor) as cursor:
+        cursor.execute(
+            """
+            SELECT *
+            FROM chat_messages
+            WHERE chat_session_id = %s
+            ORDER BY created_at ASC
+            """,
+            (str(chat_session_id),)
+        )
+        
+        rows = cursor.fetchall()
+        return [dict(row) for row in rows]
+        

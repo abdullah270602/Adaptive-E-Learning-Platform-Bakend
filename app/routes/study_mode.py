@@ -1,5 +1,6 @@
 from datetime import datetime
 import logging
+from typing import Optional
 from uuid import UUID
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
@@ -7,6 +8,7 @@ from app.auth.dependencies import get_current_user
 from app.database.book_queries import get_book_structure_query
 from app.database.connection import PostgresConnection
 from app.database.study_mode_queries import (
+    get_chat_history,
     get_or_create_chat_session,
     get_last_position,
     update_document_progress
@@ -134,3 +136,21 @@ async def create_chat_message(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Chat failed: {e}")
+
+
+@router.get("/chat/{chat_session_id}/history")
+def get_chat_history_endpoint(
+    chat_session_id: UUID,
+    current_user: str = Depends(get_current_user),
+):
+    """
+    Get full chat history for a given session ID, optionally limit the number of messages.
+    """
+    try:
+        with PostgresConnection() as conn:
+            messages = get_chat_history(conn, chat_session_id)
+        return {"chat_session_id": chat_session_id, "messages": messages}
+    except Exception as e:
+        import traceback; traceback.print_exc();
+        logger.error(f"[Get Chat History] Failed to retrieve chat history: {str(e)}")
+        return {"error": "Failed to retrieve chat history."}
