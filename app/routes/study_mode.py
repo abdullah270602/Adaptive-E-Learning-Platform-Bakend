@@ -1,7 +1,7 @@
 from datetime import datetime
 import logging
 from typing import Optional
-from uuid import UUID
+from uuid import UUID, uuid4
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from app.auth.dependencies import get_current_user
@@ -18,7 +18,7 @@ from app.schemas.document_progress import DocumentProgressUpdate
 from app.services.cache import get_cached_doc_metadata
 from app.services.constants import ASSISTANT_ROLE
 from app.services.minio_client import MinIOClientContext, get_file_from_minio
-from app.services.study_mode import handle_chat_message, save_user_and_bot_messages
+from app.services.study_mode import handle_chat_message, save_interaction_to_db
 
 logger = logging.getLogger(__name__)
 
@@ -110,14 +110,20 @@ async def create_chat_message(
     """ Handle a chat message from the user and get a reply from the model """
     try:
         llm_reply = await handle_chat_message(request, current_user)
+        tool_response_id = None
+        if llm_reply.get("tool_name"):
+            tool_response_id = uuid4()
 
-        # Save both messages in the background
+        # Save both messages and tool response in the background
         background_tasks.add_task(
-            save_user_and_bot_messages,
+            save_interaction_to_db,
             chat_session_id=request.chat_session_id,
             user_msg=request.content,
             llm_msg=llm_reply.get("llm_reply", None),
             model_id=str(request.model_id),
+            tool_name=llm_reply.get("tool_name", None),
+            tool_response_id=tool_response_id,
+            tool_response=llm_reply.get("tool_response", None),
         )
         
         response = ChatMessageResponse(
@@ -127,7 +133,7 @@ async def create_chat_message(
             content=llm_reply.get("llm_reply", "PLACEHOLDER"),
             model_id=str(request.model_id),
             tool_type=llm_reply.get("tool_name", None),
-            tool_response_id=None,
+            tool_response_id=tool_response_id,
             tool_response=llm_reply.get("tool_response", None),
             created_at=datetime.utcnow(),
         )

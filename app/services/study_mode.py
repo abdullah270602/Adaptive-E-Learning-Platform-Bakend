@@ -5,9 +5,11 @@ from fastapi import HTTPException
 import logging
 from uuid import UUID, uuid4
 from app.database.connection import PostgresConnection
-from app.database.study_mode_queries import get_last_chat_messages, insert_chat_messages
+from app.database.study_mode_queries import get_last_chat_messages, insert_chat_messages, insert_tool_response
 from app.schemas.chat import ChatMessageCreate
 from app.services.cache import get_cached_doc_metadata, get_learning_profile_with_cache
+from app.services.diagram_generator import generate_diagrams
+from app.services.game_generator import generate_game_stub
 from app.services.minio_client import MinIOClientContext, get_pdf_bytes_from_minio
 from app.services.models import get_reply_from_model
 from app.services.prompts import build_chat_message_prompt
@@ -18,31 +20,46 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
+LEARNING_TOOLS_WITH_PARAMS = {
+    "diagram": lambda content, title, chapter_name, section_name, learning_profile: generate_diagrams(
+        content, title, chapter_name, section_name, learning_profile
+    ),
+    "game": lambda content, title, chapter_name, section_name, learning_profile: generate_game_stub(
+        content, title, chapter_name, section_name, learning_profile
+    ),
+}
 
-def extract_text_from_page(pdf_stream: BytesIO, page_number: int, title: str = "") -> str:
-    """ Extract text from a specific page of a PDF document."""
+
+def extract_text_from_page(
+    pdf_stream: BytesIO, page_number: int, title: str = ""
+) -> str:
+    """Extract text from a specific page of a PDF document."""
     try:
         doc = fitz.open(stream=pdf_stream, filetype="pdf")
         if page_number < 0 or page_number >= len(doc):
             raise ValueError(f"Page number {page_number} out of bounds.")
         text = doc[page_number].get_text()
         doc.close()
-        
+
         return {"title": title, "text": text}
     except Exception as e:
         logger.error(f"PDF extraction error: {e}", exc_info=True)
         raise
 
 
-def get_page_content(document_id: UUID, page_number: int, conn, document_type: str) -> str:
-    """ Retrieve the content of a specific page from a document."""
+def get_page_content(
+    document_id: UUID, page_number: int, conn, document_type: str
+) -> str:
+    """Retrieve the content of a specific page from a document."""
     try:
         metadata = get_cached_doc_metadata(conn, str(document_id), document_type)
         if not metadata or not metadata.get("s3_key"):
             raise ValueError("Missing document metadata or S3 key.")
         with MinIOClientContext() as s3:
             file_stream = get_pdf_bytes_from_minio(s3, metadata["s3_key"])
-            return extract_text_from_page(file_stream, page_number, metadata.get("title", ""))
+            return extract_text_from_page(
+                file_stream, page_number, metadata.get("title", "")
+            )
     except Exception as e:
         logger.error(f"Failed to get page content: {e}", exc_info=True)
         raise
@@ -51,7 +68,7 @@ def get_page_content(document_id: UUID, page_number: int, conn, document_type: s
 async def run_parallel_context_tasks(
     conn, user_id: UUID, document_id: UUID, page_number: int, chat_session_id: UUID
 ):
-    """ Run parallel tasks to fetch user learning profile, page content, and last chat messages."""
+    """Run parallel tasks to fetch user learning profile, page content, and last chat messages."""
     try:
         return await asyncio.gather(
             asyncio.to_thread(get_learning_profile_with_cache, conn, user_id),
@@ -63,33 +80,37 @@ async def run_parallel_context_tasks(
         raise
 
 
-def save_user_and_bot_messages(chat_session_id, user_msg, llm_msg, model_id):
-    """ Save user and bot messages to the database."""
+def save_interaction_to_db(chat_session_id, user_msg, llm_msg, model_id, tool_name, tool_response_id, tool_response):
+    """Save user and bot messages to the database."""
     now = datetime.utcnow()
-    messages = [
-        {
-            "id": uuid4(),
-            "chat_session_id": str(chat_session_id),
-            "role": "user",
-            "content": user_msg,
-            "model_id": None,
-            "tool_type": None,
-            "tool_response_id": None,
-            "created_at": now,
-        },
-        {
-            "id": uuid4(),
-            "chat_session_id": str(chat_session_id),
-            "role": "assistant",
-            "content": llm_msg,
-            "model_id": str(model_id),
-            "tool_type": None,
-            "tool_response_id": None,
-            "created_at": datetime.utcnow(),
-        },
-    ]
-
+    
     with PostgresConnection() as conn:
+        if tool_response_id and tool_response:
+            insert_tool_response(conn, tool_response_id, tool_name, tool_response, tool_response)
+        
+        messages = [
+            {
+                "id": uuid4(),
+                "chat_session_id": str(chat_session_id),
+                "role": "user",
+                "content": user_msg,
+                "model_id": None,
+                "tool_type": None,
+                "tool_response_id": None,
+                "created_at": now,
+            },
+            {
+                "id": uuid4(),
+                "chat_session_id": str(chat_session_id),
+                "role": "assistant",
+                "content": llm_msg,
+                "model_id": str(model_id),
+                "tool_type": tool_name,
+                "tool_response_id": str(tool_response_id) if tool_response_id else None,
+                "created_at": datetime.utcnow(),
+            },
+        ]
+        
         insert_chat_messages(conn, messages)
 
 
@@ -106,7 +127,7 @@ def detect_tool_and_clean_reply(reply: str) -> Tuple[Optional[dict], str]:
     cleaned_reply = reply
 
     try:
-        match = re.search(r'TOOL_CALL:\s*(\{.*?\})', reply.strip(), re.DOTALL)
+        match = re.search(r"TOOL_CALL:\s*(\{.*?\})", reply.strip(), re.DOTALL)
         if match:
             raw_json = match.group(1)
             cleaned_reply = reply.replace(match.group(0), "").strip()
@@ -124,8 +145,16 @@ def detect_tool_and_clean_reply(reply: str) -> Tuple[Optional[dict], str]:
     return tool_info, cleaned_reply
 
 
-def run_tool(tool_name: str) -> Optional[Any]:  # TODO make this async
+async def run_tool(tool_name: str, context: dict) -> Optional[Any]:  # TODO make this async
     try:
+        if tool_name not in LEARNING_TOOLS_WITH_PARAMS:
+            return {"error": f"Tool '{tool_name}' not found"}
+    
+        tool = LEARNING_TOOLS_WITH_PARAMS[tool_name](**context)
+        print("🐍 File: services/study_mode.py | Line: 154 | undefined ~ tool",tool)
+        return await tool
+        
+
         return {
             "diagrams": [
                 "graph TD\n    LogicalThinking  -->  BuildingBlocks\n    BuildingBlocks  -->  ProblemSolvingSkills\n    ProblemSolvingSkills  -->  BetterProgramming",
@@ -142,26 +171,44 @@ def clean_tool_response(tool_name: str, tool_result: Any, original_reply: str) -
     """
     Optionally strip tool trigger from original reply and append formatted tool result.
     """
-    
-    return {"tool_name": tool_name, "tool_response": tool_result, "llm_reply": original_reply}
+
+    return {
+        "tool_name": tool_name,
+        "tool_response": tool_result,
+        "llm_reply": original_reply,
+    }
 
 
 async def handle_chat_message(payload: ChatMessageCreate, user_id: UUID) -> str:
-    """ Handle a chat message by fetching context, building a prompt, getting a reply from the mode and running tools."""
+    """Handle a chat message by fetching context, building a prompt, getting a reply from the mode and running tools."""
     try:
         with PostgresConnection() as conn:
             try:
-                learning_profile, title_and_page_content, previous_messages = await run_parallel_context_tasks(
-                    conn,
-                    user_id,
-                    payload.document_id,
-                    payload.current_page,
-                    payload.chat_session_id
+                learning_profile, title_and_page_content, previous_messages = (
+                    await run_parallel_context_tasks(
+                        conn,
+                        user_id,
+                        payload.document_id,
+                        payload.current_page,
+                        payload.chat_session_id,
+                    )
                 )
                 logger.info("Parallel tasks completed successfully.")
+
+                context_for_tool = {
+                    "content": title_and_page_content["text"],
+                    "title": title_and_page_content.get("title", ""),
+                    "chapter_name": payload.chapter_name,
+                    "section_name": payload.section_name,
+                    "learning_profile": learning_profile,
+                }
             except Exception as context_error:
-                logger.error(f"Error fetching context for chat: {context_error}", exc_info=True)
-                raise HTTPException(status_code=500, detail="Failed to load user context or document.")
+                logger.error(
+                    f"Error fetching context for chat: {context_error}", exc_info=True
+                )
+                raise HTTPException(
+                    status_code=500, detail="Failed to load user context or document."
+                )
 
         try:
             initial_prompt = build_chat_message_prompt(
@@ -174,15 +221,21 @@ async def handle_chat_message(payload: ChatMessageCreate, user_id: UUID) -> str:
             )
 
             # Append history
-            history = [{"role": msg["role"], "content": msg["content"]} for msg in previous_messages]
+            history = [
+                {"role": msg["role"], "content": msg["content"]}
+                for msg in previous_messages
+            ]
             prompt = [initial_prompt[0]] + history + [initial_prompt[1]]
 
         except Exception as prompt_error:
             logger.error(f"Prompt building failed: {prompt_error}", exc_info=True)
-            raise HTTPException(status_code=500, detail="Failed to construct model prompt.")
+            raise HTTPException(
+                status_code=500, detail="Failed to construct model prompt."
+            )
 
         try:
-            reply = get_reply_from_model(str(payload.model_id), prompt)
+            # reply = get_reply_from_model(str(payload.model_id), prompt)
+            reply = "THIS IS A TEST REPLY xyz \n \n ..... TOOL_CALL: {\"tool\": \"diagram\"} ....."
 
             # Detect tool trigger and clean reply if found
             detected_tool, cleaned_reply = detect_tool_and_clean_reply(reply)
@@ -191,16 +244,20 @@ async def handle_chat_message(payload: ChatMessageCreate, user_id: UUID) -> str:
                 logger.info(f"Tool detected: {detected_tool['tool_name']}")
 
                 try:
-                    tool_raw_result = run_tool(detected_tool['tool_name'])
+                    tool_raw_result = await run_tool(detected_tool["tool_name"], context_for_tool)
 
                     final_response = clean_tool_response(
                         tool_name=detected_tool["tool_name"],
                         tool_result=tool_raw_result,
-                        original_reply=cleaned_reply +"\n\n                                       ________________ORIGINAL REPLY_______: \n"+ reply
+                        original_reply=cleaned_reply
+                        + "\n\n                            ________ORIGINAL REPLY_______: \n"
+                        + reply,
                     )
                 except Exception as tool_error:
                     logger.error(f"Tool execution failed: {tool_error}", exc_info=True)
-                    raise HTTPException(status_code=500, detail="Tool execution failed.")
+                    raise HTTPException(
+                        status_code=500, detail="Tool execution failed."
+                    )
 
             else:
                 final_response = cleaned_reply
@@ -208,11 +265,15 @@ async def handle_chat_message(payload: ChatMessageCreate, user_id: UUID) -> str:
             return final_response
 
         except Exception as model_error:
-            logger.error(f"Model call or tool handling failed: {model_error}", exc_info=True)
+            logger.error(
+                f"Model call or tool handling failed: {model_error}", exc_info=True
+            )
             raise HTTPException(status_code=500, detail="Model processing failed.")
 
     except HTTPException:
         raise
     except Exception as e:
         logger.critical(f"Unexpected error in handle_chat_message: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Unexpected error while processing chat message.")
+        raise HTTPException(
+            status_code=500, detail="Unexpected error while processing chat message."
+        )

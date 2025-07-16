@@ -128,3 +128,15 @@ def get_chat_history(conn: PGConnection, chat_session_id: UUID) -> list[dict]:
         rows = cursor.fetchall()
         return [dict(row) for row in rows]
         
+        
+def insert_tool_response(conn: PGConnection, id: UUID, tool_type: str, response, response_text: str):
+    response = None
+    with conn.cursor() as cursor:
+        cursor.execute(
+            """
+            INSERT INTO tool_responses (id, tool_type, response, response_text)
+            VALUES (%s, %s, %s, %s)
+            """,
+            (str(id), tool_type, response, response_text)
+        )
+        conn.commit()

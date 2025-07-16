@@ -4,9 +4,18 @@ import logging
 from app.services.constants import LLAMA_3_70b
 from app.services.models import get_client_for_service
 from app.services.prompts import GAME_CODE_PROMPT, GAME_CODE_PROMPT_OLD, GAME_IDEA_PROMPT
+from app.services.utils import get_openai_client
 
 
 logger = logging.getLogger(__name__)
+
+async def generate_game_stub(content: str, title: str, chapter_name: str, section_name: str, learning_profile: str):
+    try:
+        return "GAME GEN IN PROGRESS.... 🎰🕹️🎮🎯"
+    except Exception as e:
+        logger.error(f"Error generating game stub: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error generating game stub: {str(e)}")
+    
 
 def generate_game_idea(content: str, learning_profile: str,):
     try:
