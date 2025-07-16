@@ -50,8 +50,10 @@ class RedisClient:
 
     def get(self, key: str) -> Optional[str]:
         try:
-            logger.info(f" Retrieved key {key} from cache")
-            return self.client.get(key)
+            
+            key = self.client.get(key)
+            logger.info(f" Retrieved key from cache {key}")
+            return key
         except Exception as e:
             logger.error(f" Failed to retrieve key {key}: {e}")
             return None
