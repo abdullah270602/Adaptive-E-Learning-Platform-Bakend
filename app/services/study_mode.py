@@ -196,7 +196,7 @@ async def handle_chat_message(payload: ChatMessageCreate, user_id: UUID) -> str:
                     final_response = clean_tool_response(
                         tool_name=detected_tool["tool_name"],
                         tool_result=tool_raw_result,
-                        original_reply=cleaned_reply +"\n\n                                       ORGINAL REPLY: \n"+ reply
+                        original_reply=cleaned_reply +"\n\n                                       ________________ORIGINAL REPLY_______: \n"+ reply
                     )
                 except Exception as tool_error:
                     logger.error(f"Tool execution failed: {tool_error}", exc_info=True)

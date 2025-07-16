@@ -135,7 +135,9 @@ async def create_chat_message(
         return response
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Chat failed: {e}")
+        import traceback; traceback.print_exc();
+        logger.error(f"[Create Chat Message] Failed to create chat message: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Chat Message creation failed, Please try again.")
 
 
 @router.get("/chat/{chat_session_id}/history")
