@@ -9,7 +9,7 @@ from app.services.diagram_generator import generate_diagrams
 router = APIRouter(prefix="/diagrams", tags=["Diagrams"])
 
 
-@router.post("/generate", response_model=DiagramResponse, status_code=status.HTTP_200_OK)
+@router.post("/generate", response_model=DiagramResponse, status_code=status.HTTP_200_OK, deprecated=True)
 async def generate_diagram_endpoint(
     request: DiagramRequest,
     current_user: str = Depends(get_current_user)
