@@ -129,16 +129,18 @@ def get_learniing_style_prompt(answers, vrk_scores, dominant_styles, behavioral_
 DIAGRAM_GENERATION_PROMPT = """
 You are an expert at creating clear, educational diagrams using mermaid syntax. Your task is to generate 2-3 simple Mermaid flowcharts showing the main concepts from this content.
 
-CONTENT:
+**BOOK**: {book_name}
+**CHAPTER**: {chapter_name}  
+**SECTION**: {section_name}
+
+**CONTENT** the page currently viewing :
 {content}
 
-SUMMARY:
-{summary}
 
-USER PROFILE:
+**LEARNER PROFILE**:
 {learning_profile}
 
-RULES:
+**RULES**:
 - Use only: graph TD, [square brackets], and -->
 - Max 10 nodes per diagram
 - Keep labels short (1-4 words) but MEANINGFUL
@@ -148,20 +150,26 @@ RULES:
 - Use actual terminology from the content, not generic words
 - Avoid spaces in compound labels (use "RightTriangle" not "Right Triangle")
 
-DIAGRAM TYPES TO FOCUS ON:
+**CONTEXT-AWARE FOCUS**:
+- Consider the book/chapter/section context for relevance
+- Prioritize concepts that fit within this specific learning sequence
+- Connect to broader chapter themes where appropriate
+- Adapt complexity to the learner's profile
+
+**DIAGRAM TYPES TO FOCUS ON**:
 1. **Process Flow**: Show how something works step-by-step
 2. **Cause-Effect**: Show what leads to what and why
 3. **System Structure**: Show how components relate to each other
 4. **Concept Hierarchy**: Show how ideas build on each other
 
-QUALITY CHECKS:
+**QUALITY CHECKS**:
 - Can someone understand the topic just from your diagrams?
 - Do your node labels come directly from the content?
 - Are you showing real relationships, not just random connections?
 - Does each diagram reveal something different about the topic?
 - Would these diagrams help someone study or remember the concepts?
 
-THINK BEFORE CREATING:
+**THINK BEFORE CREATING**:
 1. What are the key processes described?
 2. What causes what in this content?
 3. How do the components interact?
@@ -226,7 +234,7 @@ graph TD
 
 CRITICAL: Return ONLY Mermaid diagrams. No explanations, no other text, no introductions.
 
-OUTPUT FORMAT:
+## OUTPUT FORMAT (STRICT):
 
 ```mermaid
 graph TD
@@ -648,17 +656,9 @@ Create a fully functional React component for the following game idea that integ
 
 
 TOOLS_AVAILABLE = {
-    "quiz": {
-        "name": "quiz_generator",
-        "description": "Creates multiple-choice questions from content"
-    },
     "diagram": {
         "name": "diagram_generator",
         "description": "Generates visual diagrams using mermaid syntax"
-    },
-    "flashcards": {
-        "name": "flashcard_generator",
-        "description": "Makes flashcards for memorizing key concepts"
     },
     "game": {
         "name": "mini_game_generator",
