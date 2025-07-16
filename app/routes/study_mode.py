@@ -113,7 +113,7 @@ async def create_chat_message(
             save_user_and_bot_messages,
             chat_session_id=request.chat_session_id,
             user_msg=request.content,
-            llm_msg=llm_reply,
+            llm_msg=llm_reply.get("llm_reply", None),
             model_id=str(request.model_id),
         )
         
@@ -121,10 +121,11 @@ async def create_chat_message(
             chat_session_id=str(request.chat_session_id),
             user_id=current_user,
             role= ASSISTANT_ROLE,
-            content=llm_reply,
+            content=llm_reply.get("llm_reply", "PLACEHOLDER"),
             model_id=str(request.model_id),
-            tool_type=None,
+            tool_type=llm_reply.get("tool_name", None),
             tool_response_id=None,
+            tool_response=llm_reply.get("tool_response", None),
             created_at=datetime.utcnow(),
         )
 

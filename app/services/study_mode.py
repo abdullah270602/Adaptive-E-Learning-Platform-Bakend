@@ -1,3 +1,6 @@
+import json
+import re
+from typing import Any, Optional, Tuple
 from fastapi import HTTPException
 import logging
 from uuid import UUID, uuid4
@@ -90,8 +93,61 @@ def save_user_and_bot_messages(chat_session_id, user_msg, llm_msg, model_id):
         insert_chat_messages(conn, messages)
 
 
+def detect_tool_and_clean_reply(reply: str) -> Tuple[Optional[dict], str]:
+    """
+    Detects simple tool call in the format:
+        TOOL_CALL: {"tool": "tool_name"}
+
+    Returns:
+        - tool_info: {"tool_name": <tool>} if found, else None
+        - cleaned_reply: reply with TOOL_CALL block removed
+    """
+    tool_info = None
+    cleaned_reply = reply
+
+    try:
+        match = re.search(r'TOOL_CALL:\s*(\{.*?\})', reply.strip(), re.DOTALL)
+        if match:
+            raw_json = match.group(1)
+            cleaned_reply = reply.replace(match.group(0), "").strip()
+
+            try:
+                parsed = json.loads(raw_json)
+                if isinstance(parsed, dict) and "tool" in parsed:
+                    tool_info = {"tool_name": parsed["tool"]}
+            except json.JSONDecodeError as e:
+                print(f"[Tool Parse Failed] {e} → raw: {raw_json}")
+
+    except Exception as e:
+        print(f"[Tool Detection Error] {e}")
+
+    return tool_info, cleaned_reply
+
+
+def run_tool(tool_name: str) -> Optional[Any]:  # TODO make this async
+    try:
+        return {
+            "diagrams": [
+                "graph TD\n    LogicalThinking  -->  BuildingBlocks\n    BuildingBlocks  -->  ProblemSolvingSkills\n    ProblemSolvingSkills  -->  BetterProgramming",
+                "graph TD\n    CurrentSkillLevel  -->  ImproveSkillLevel\n    ImproveSkillLevel  -->  NewKnowledge\n    NewKnowledge  -->  EnhancedProblemSolving",
+                "graph TD\n    ConceptUnderstanding  -->  ClearInstructions\n    ClearInstructions  -->  FocusAndRetention\n    FocusAndRetention  -->  DeepUnderstanding",
+            ]
+        }
+    except Exception as e:
+        logger.error(f"Error running tool {tool_name}: {e}", exc_info=True)
+        return None
+
+
+def clean_tool_response(tool_name: str, tool_result: Any, original_reply: str) -> str:
+    """
+    Optionally strip tool trigger from original reply and append formatted tool result.
+    """
+    
+    return {"tool_name": tool_name, "tool_response": tool_result, "llm_reply": original_reply}
+
+
 async def handle_chat_message(payload: ChatMessageCreate, user_id: UUID) -> str:
-    """ Handle a chat message by fetching context, building a prompt, and getting a reply from the model."""
+    """ Handle a chat message by fetching context, building a prompt, getting a reply from the mode and running tools."""
     try:
         with PostgresConnection() as conn:
             try:
@@ -102,6 +158,7 @@ async def handle_chat_message(payload: ChatMessageCreate, user_id: UUID) -> str:
                     payload.current_page,
                     payload.chat_session_id
                 )
+                logger.info("Parallel tasks completed successfully.")
             except Exception as context_error:
                 logger.error(f"Error fetching context for chat: {context_error}", exc_info=True)
                 raise HTTPException(status_code=500, detail="Failed to load user context or document.")
@@ -126,16 +183,36 @@ async def handle_chat_message(payload: ChatMessageCreate, user_id: UUID) -> str:
 
         try:
             reply = get_reply_from_model(str(payload.model_id), prompt)
-            return reply
+
+            # Detect tool trigger and clean reply if found
+            detected_tool, cleaned_reply = detect_tool_and_clean_reply(reply)
+
+            if detected_tool:
+                logger.info(f"Tool detected: {detected_tool['tool_name']}")
+
+                try:
+                    tool_raw_result = run_tool(detected_tool['tool_name'])
+
+                    final_response = clean_tool_response(
+                        tool_name=detected_tool["tool_name"],
+                        tool_result=tool_raw_result,
+                        original_reply=cleaned_reply +"\n\n                                       ORGINAL REPLY: \n"+ reply
+                    )
+                except Exception as tool_error:
+                    logger.error(f"Tool execution failed: {tool_error}", exc_info=True)
+                    raise HTTPException(status_code=500, detail="Tool execution failed.")
+
+            else:
+                final_response = cleaned_reply
+
+            return final_response
 
         except Exception as model_error:
-            logger.error(f"Model call failed: {model_error}", exc_info=True)
-            raise HTTPException(status_code=500, detail="Model generation failed.")
+            logger.error(f"Model call or tool handling failed: {model_error}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Model processing failed.")
 
     except HTTPException:
         raise
     except Exception as e:
         logger.critical(f"Unexpected error in handle_chat_message: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Unexpected error while processing chat message.")
-
-

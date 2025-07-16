@@ -1,6 +1,6 @@
 from datetime import datetime
 from pydantic import BaseModel, Field
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 from uuid import UUID
 
 from app.services.constants import DEFAULT_MODEL_ID
@@ -23,4 +23,5 @@ class ChatMessageResponse(BaseModel):
     model_id: Optional[UUID]
     tool_type: Optional[str] = None
     tool_response_id: Optional[UUID] = None
+    tool_response: Optional[Any] = None
     created_at: datetime
