@@ -245,26 +245,26 @@ graph TD
 
 GAME_IDEA_PROMPT = """
 You are an educational game designer tasked with creating an interactive learning game concept. This concept will later be implemented by another AI as a React-based web application.
-Your Task
+## Your Task
 Analyze the provided educational materials and user learning profile, then design ONE specific game concept that reinforces the key learning objectives.
 Required Inputs Analysis
-1. Content Analysis
+## 1. Content Analysis
 From the primary content provided below, identify:
 
 Key concepts: What are the 2-3 most important concepts students should learn?
 Learning objectives: What should students be able to do after engaging with this content?
 Difficulty level: Is this beginner, intermediate, or advanced material?
 
-Primary Content:
+## Primary Content:
 {content}
-2. Learning Profile Analysis
+## 2. Learning Profile Analysis
 Based on the user's learning profile below, determine:
 
 Preferred learning style (visual, auditory, kinesthetic, reading/writing)
 Engagement preferences (competitive, collaborative, exploratory, structured)
 Skill level and background
 
-User Learning Profile:
+## User Learning Profile:
 {learning_profile}
 Game Design Requirements
 Your game concept must meet ALL of these criteria:
@@ -277,7 +277,7 @@ Personalized: Matches the user's learning style and preferences
 
 Required Output Format
 Provide your game concept in this exact structure:
-Game Title
+## Game Title
 [Creative, descriptive name]
 Core Concept(s) Being Reinforced
 
@@ -285,7 +285,7 @@ Concept 1: [Brief description]
 Concept 2: [Brief description if applicable]
 Concept 3: [Brief description if applicable]
 
-Game Mechanics
+## Game Mechanics
 Objective: What is the player trying to achieve?
 How to Play: Step-by-step gameplay flow (3-5 steps)
 Interaction Type: [Click, drag-and-drop, typing, multiple choice, etc.]
@@ -321,7 +321,7 @@ How will you know the game is working educationally?
 
 [2-3 specific learning outcomes the game should achieve]
 
-Important Guidelines
+## Important Guidelines
 
 Focus on ONE clear game concept rather than multiple options
 Ensure the game directly teaches the content rather than just testing recall
@@ -565,6 +565,7 @@ Generate the complete game code now:
 GAME_CODE_PROMPT_OLD = """
 Create a fully functional React component for the following game idea that integrates concepts from multiple learning materials:
 
+    ## GAME IDEA:
     {game_idea}
 
     The component will be rendered within a DynamicGameComponent. Your task is to generate the code that will be passed to this component.
@@ -629,7 +630,7 @@ Create a fully functional React component for the following game idea that integ
                 15. Add a button to start/restart the game, and only capture keyboard input when the game is active
                 16. Ensure that the current equation is always visible and properly rendered using plain text or another method
                 17. To prevent scrolling when using arrow keys:
-                    - Add 'tabIndex={0}' to the game container div to make it focusable
+                    - Add 'tabIndex={{0}}' to the game container div to make it focusable
                     - In the useEffect for keyboard events, check if the game container has focus before handling key presses
                 18. Display the current function prominently using plain text, and update it whenever it changes
                 19. Use requestAnimationFrame for the game loop to ensure smooth animation
@@ -650,6 +651,35 @@ Create a fully functional React component for the following game idea that integ
                     - Listen for container size changes and update game element sizes accordingly
                     - Use getBoundingClientRect() to get accurate container dimensions
                     - Apply CSS transform-origin: top left when scaling
+                
+                25. Educational Features:
+                    - Include an "Auto-Solve" or "Show Me How" button that demonstrates the correct procedure execution or step-by-step solution
+                    - The auto-solve should animate step-by-step at a reasonable pace (500-1000ms per step)
+                    - Highlight the elements/concepts being processed during auto-solve with visual indicators
+                    - Allow users to pause/resume or stop the demonstration
+                    - Consider adding speed controls (slow/medium/fast) for the demonstration
+                    - Show progress indicators (current step, concepts covered, completion percentage, etc.)
+
+                26. Learning Enhancement:
+                    - Add tooltips or brief explanations during auto-solve about what's happening at each step
+                    - Include a "Reset to Original" button to restart with the same content for comparison
+                    - Consider showing complexity or difficulty information related to the topic
+                    - Add a "Hint" system that suggests the next optimal step without fully solving
+                    - Include visual feedback for correct vs suboptimal approaches
+
+                27. Content Visualization:
+                    - Use different colors/animations for different states (processing, completed, highlighted concepts)
+                    - Show the completed portion vs remaining content clearly
+                    - Include a progress bar showing how close to completion the demonstration is
+                    - Use visual hierarchies to distinguish between different concept levels or importance
+
+                  28. User Experience:
+                    - Provide clear feedback for invalid actions or incorrect attempts
+                    - Add confirmation for reset actions
+                    - Include keyboard shortcuts for common actions
+                    - Add accessibility features (ARIA labels, keyboard navigation, screen reader support)
+                    - Consider mobile-responsive touch interactions
+                    - Ensure content scales appropriately across different screen sizes
                                                                 
             Generate the game code now, remember to not include any explanations or comments, just the code:
 """
