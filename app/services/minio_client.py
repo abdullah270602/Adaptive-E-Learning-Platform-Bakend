@@ -44,3 +44,12 @@ def get_pdf_bytes_from_minio(client: MinIOClientContext, s3_key: str, bucket: st
         return BytesIO(byte_stream)
     except Exception as e:
         raise RuntimeError(f"MinIO PDF bytes fetch failed: {e}")
+    
+
+async def save_file_to_minio(client: MinIOClientContext, tmp_path, s3_key: str, bucket: str = os.getenv("MINIO_BUCKET_NAME")):
+    try:
+        client.upload_file(Filename=tmp_path, Bucket=bucket, Key=s3_key)
+    except Exception as e:
+        import traceback; traceback.print_exc();
+        raise RuntimeError(f"MinIO upload failed: {e}")
+    
