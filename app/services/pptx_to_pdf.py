@@ -20,11 +20,13 @@ async def convert_pptx_to_pdf(input_path: str) -> str:
         pdf_path = os.path.join(output_dir, pdf_filename)
 
         # Determine correct command
-        system = platform.system()
+        system = os.getenv("OS", None)
         if system == "Windows":
             soffice_cmd = r"C:\Program Files\LibreOffice\program\soffice.com"
         else:
             soffice_cmd = "/usr/bin/libreoffice"
+            
+        logger.info(f"Using LibreOffice command: {soffice_cmd}")
 
         command = [
             soffice_cmd,
