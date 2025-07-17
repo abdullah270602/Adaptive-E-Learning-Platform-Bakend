@@ -1,9 +1,9 @@
 import logging
 import os
 from openai import OpenAI
+from app.cache.models import get_active_model_by_id_cached
 from app.database.connection import PostgresConnection
-from app.database.model_queries import get_active_model_name_and_service_by_id
-from app.services.constants import DEFAULT_MODEL_ID, SERVICE_CONFIG, SYSTEM_ROLE
+from app.services.constants import SERVICE_CONFIG
 
 
 logger = logging.getLogger(__name__)
@@ -46,7 +46,7 @@ def get_reply_from_model(model_id: str, chat: list[str]) -> str:
     """
     try:
         with PostgresConnection() as conn:
-            model_data = get_active_model_name_and_service_by_id(conn, model_id)
+            model_data = get_active_model_by_id_cached(conn, model_id)
             service = model_data["service"]
             model_name = model_data["model_name"]
             logger.info(

@@ -4,10 +4,11 @@ from typing import Any, Optional, Tuple
 from fastapi import HTTPException
 import logging
 from uuid import UUID, uuid4
+from app.cache.learning_profile import get_learning_profile_with_cache
+from app.cache.metadata import get_cached_doc_metadata
 from app.database.connection import PostgresConnection
 from app.database.study_mode_queries import get_last_chat_messages, insert_chat_messages, insert_tool_response
 from app.schemas.chat import ChatMessageCreate
-from app.services.cache import get_cached_doc_metadata, get_learning_profile_with_cache
 from app.services.diagram_generator import generate_diagrams
 from app.services.game_generator import generate_game_stub
 from app.services.minio_client import MinIOClientContext, get_pdf_bytes_from_minio
@@ -151,7 +152,6 @@ async def run_tool(tool_name: str, context: dict) -> Optional[Any]:  # TODO make
             return {"error": f"Tool '{tool_name}' not found"}
     
         tool = LEARNING_TOOLS_WITH_PARAMS[tool_name](**context)
-        print("🐍 File: services/study_mode.py | Line: 154 | undefined ~ tool",tool)
         return await tool
         
 
@@ -234,8 +234,8 @@ async def handle_chat_message(payload: ChatMessageCreate, user_id: UUID) -> str:
             )
 
         try:
-            # reply = get_reply_from_model(str(payload.model_id), prompt)
-            reply = "THIS IS A TEST REPLY xyz \n \n ..... TOOL_CALL: {\"tool\": \"diagram\"} ....."
+            reply = get_reply_from_model(str(payload.model_id), prompt) # TODO Un comment after testing 🚨🚨🚨
+            # reply = "THIS IS A TEST REPLY xyz \n \n ..... TOOL_CALL: {\"tool\": \"diagram\"} ....."
 
             # Detect tool trigger and clean reply if found
             detected_tool, cleaned_reply = detect_tool_and_clean_reply(reply)

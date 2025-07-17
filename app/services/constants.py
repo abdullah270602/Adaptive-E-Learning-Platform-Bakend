@@ -1,8 +1,10 @@
+
 LLAMA_3_70b = "llama-3.3-70b-versatile"
 SYSTEM_ROLE = "system"
 USER_ROLE = "user"
 ASSISTANT_ROLE = "assistant"
-DEFAULT_MODEL_ID = "d50a33ce-2462-4a5a-9aa7-efc2d1749745"
+DEFAULT_MODEL_ID = "d50a33ce-2462-4a5a-9aa7-efc2d1749745" # LLAMA_3_70b
+# DEFAULT_MODEL_ID = "a1b6e28b-6c75-4695-be78-ce8fa3c11c06" # DeepSeek Chat
 
 SERVICE_CONFIG = {
     "groq": {

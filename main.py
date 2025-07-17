@@ -42,6 +42,16 @@ def read_root():
     return {"FYP Backend": "Online 👍"}
 
 
+@app.on_event("startup")
+async def load_models_to_cache_event():
+    from app.database.connection import PostgresConnection
+    from app.cache.models import load_models_to_cache
+    with PostgresConnection() as conn:
+        try:
+            load_models_to_cache(conn)
+        except Exception as e:
+            logging.error(f" Failed to load models to cache: {e}")
+
 app.include_router(file_router)
 app.include_router(auth_router)
 app.include_router(learning_profile_router)

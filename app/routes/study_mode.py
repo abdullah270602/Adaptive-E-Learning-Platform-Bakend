@@ -6,6 +6,7 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from app.auth.dependencies import get_current_user
+from app.cache.metadata import get_cached_doc_metadata
 from app.database.book_queries import get_book_structure_query
 from app.database.connection import PostgresConnection
 from app.database.study_mode_queries import (
@@ -17,7 +18,6 @@ from app.database.study_mode_queries import (
 )
 from app.schemas.chat import ChatMessageCreate, ChatMessageResponse
 from app.schemas.document_progress import DocumentProgressUpdate
-from app.services.cache import get_cached_doc_metadata
 from app.services.constants import ASSISTANT_ROLE
 from app.services.minio_client import MinIOClientContext, get_file_from_minio
 from app.services.study_mode import handle_chat_message, save_interaction_to_db

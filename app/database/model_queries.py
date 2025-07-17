@@ -18,6 +18,25 @@ def get_all_models(conn: PGConnection) -> list:
     with conn.cursor(cursor_factory=DictCursor) as cursor:
         cursor.execute(query)
         return cursor.fetchall()
+
+
+def get_all_models_services(conn: PGConnection) -> list:
+    """
+    List all available active models and their services.
+    """
+    query = """
+        SELECT
+            id,
+            display_name,
+            service,
+            model_name
+        FROM models
+        WHERE is_active = TRUE;
+    """
+    with conn.cursor(cursor_factory=DictCursor) as cursor:
+        cursor.execute(query)
+        rows = cursor.fetchall()
+        return [dict(row) for row in rows]
     
     
     

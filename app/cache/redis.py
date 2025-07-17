@@ -6,6 +6,7 @@ import os
 import logging
 from typing import Optional, Union
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -26,9 +27,6 @@ class RedisClient:
                 db=db,
                 decode_responses=decode_responses,
             )
-            # Test connection
-            self.client.ping()
-            logger.info("Redis connection established.")
         except redis.exceptions.ConnectionError as e:
             import traceback; traceback.print_exc();
             logger.critical(" Redis connection failed: %s", str(e))
@@ -74,6 +72,7 @@ class RedisClient:
     def flush_all(self) -> None:
         try:
             self.client.flushall()
+            logger.info(" Flushed all Redis DB")
         except Exception as e:
             logger.error(" Failed to flush Redis DB: %s", e)
             

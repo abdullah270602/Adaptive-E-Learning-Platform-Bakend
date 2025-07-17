@@ -1,5 +1,4 @@
 import re
-from typing import Optional
 from fastapi import HTTPException
 import fitz  # PyMuPDF
 from PIL import Image
@@ -11,10 +10,7 @@ import base64
 from app.services.constants import LLAMA_3_70b
 from app.services.models import get_client_for_service
 from app.services.prompts import TOC_EXTRACTION_PROMPT
-from psycopg2.extensions import connection as PGConnection
 
-from app.database.book_queries import get_book_metadata
-from app.database.slides_queries import get_slide_metadata
 
 logger = logging.getLogger(__name__)
 
@@ -144,13 +140,3 @@ async def process_toc_pages(
         logging.error(f"[TOC] Failed in process_toc_pages_postgres: {e}")
         raise HTTPException(status_code=500, detail="TOC processing failed.")
 
-
-def get_doc_metadata(conn: PGConnection, document_id: str, document_type: str) -> Optional[dict]:
-    if document_type == "book":
-        return get_book_metadata(conn, document_id)
-    elif document_type == "slide":
-        return get_slide_metadata(conn, document_id)
-    elif document_type == "note":
-        return "Notes Meta data not implemented yet"
-    else:
-        raise ValueError(f"Unknown document type: {document_type}")
