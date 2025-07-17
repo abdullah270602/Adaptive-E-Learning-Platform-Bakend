@@ -20,7 +20,7 @@ async def convert_pptx_to_pdf(input_path: str) -> str:
         soffice_cmd = (
             r"C:\Program Files\LibreOffice\program\soffice.com"
             if is_windows
-            else "libreoffice"
+            else "/usr/bin/libreoffice"
         )
 
         try:
