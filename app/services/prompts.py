@@ -335,6 +335,17 @@ Consider accessibility and different skill levels
 Design a game that makes learning these concepts engaging, memorable, and effective for this specific user.
 """
 
+GAME_GEN_SYSTEM_PROMPT = """ You are creating React game components that render educational content. Technical requirements:
+- Use React.createElement (no JSX)
+- Use React hooks without React. prefix (useState, useEffect, etc.)
+- Return single root element with white background
+- Container uses width: 100%, height: 100% with 5:6 aspect ratio
+- Use relative units (%, vh, vw) for responsive design
+- Include error handling with try-catch blocks
+- Use requestAnimationFrame for smooth animations
+- use Tailwind classes for styling
+"""
+
 
 GAME_CODE_PROMPT = """
 Task Overview
