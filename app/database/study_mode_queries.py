@@ -1,3 +1,4 @@
+import json
 from psycopg2.extensions import connection as PGConnection
 from psycopg2.extras import DictCursor
 from uuid import UUID, uuid4
@@ -130,13 +131,27 @@ def get_chat_history(conn: PGConnection, chat_session_id: UUID) -> list[dict]:
         
         
 def insert_tool_response(conn: PGConnection, id: UUID, tool_type: str, response, response_text: str):
-    response = None
+    tool_response_json = json.dumps(response)
     with conn.cursor() as cursor:
         cursor.execute(
             """
             INSERT INTO tool_responses (id, tool_type, response, response_text)
             VALUES (%s, %s, %s, %s)
             """,
-            (str(id), tool_type, response, response_text)
+            (str(id), tool_type, tool_response_json, response_text)
         )
         conn.commit()
+        
+        
+def get_tool_response_by_id(conn: PGConnection, id: UUID) -> dict:
+    with conn.cursor(cursor_factory=DictCursor) as cursor:
+        cursor.execute(
+            """
+            SELECT *
+            FROM tool_responses
+            WHERE id = %s
+            """,
+            (str(id),)
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else {}

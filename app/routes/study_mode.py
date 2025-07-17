@@ -1,4 +1,5 @@
 from datetime import datetime
+import json
 import logging
 from typing import Optional
 from uuid import UUID, uuid4
@@ -11,6 +12,7 @@ from app.database.study_mode_queries import (
     get_chat_history,
     get_or_create_chat_session,
     get_last_position,
+    get_tool_response_by_id,
     update_document_progress
 )
 from app.schemas.chat import ChatMessageCreate, ChatMessageResponse
@@ -147,7 +149,7 @@ async def create_chat_message(
 
 
 @router.get("/chat/{chat_session_id}/history")
-def get_chat_history_endpoint(
+async def get_chat_history_endpoint(
     chat_session_id: UUID,
     current_user: str = Depends(get_current_user),
 ):
@@ -162,3 +164,25 @@ def get_chat_history_endpoint(
         import traceback; traceback.print_exc();
         logger.error(f"[Get Chat History] Failed to retrieve chat history: {str(e)}")
         return {"error": "Failed to retrieve chat history."}
+    
+    
+@router.get("tool-response/{tool_response_id}")
+async def get_tool_response(
+    tool_response_id: UUID,
+    current_user: str = Depends(get_current_user),
+):
+    """
+    Get the tool response by its ID.
+    """
+    try:
+        with PostgresConnection() as conn:
+            response = get_tool_response_by_id(conn, tool_response_id)
+            response["response_text"] = None
+            return response
+        if not response:
+            raise HTTPException(status_code=404, detail="Tool response not found")
+        return response
+    except Exception as e:
+        import traceback; traceback.print_exc();
+        logger.error(f"[Get Tool Response] Failed to retrieve tool response: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve tool response.")
