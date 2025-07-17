@@ -1,9 +1,9 @@
 import re
 from fastapi import HTTPException
 import logging
-from app.services.constants import LLAMA_3_70b
+from app.services.constants import LLAMA_3_70b, QWEN_CODER_32b
 from app.services.models import get_client_for_service
-from app.services.prompts import GAME_CODE_PROMPT, GAME_CODE_PROMPT_OLD, GAME_IDEA_PROMPT
+from app.services.prompts import GAME_CODE_PROMPT, GAME_CODE_PROMPT_OLD, GAME_GEN_SYSTEM_PROMPT, GAME_IDEA_PROMPT
 from app.services.utils import get_openai_client
 
 
@@ -17,7 +17,7 @@ async def generate_game_stub(content: str, title: str, chapter_name: str, sectio
         raise HTTPException(status_code=500, detail=f"Error generating game stub: {str(e)}")
     
 
-def generate_game_idea(content: str, learning_profile: str,):
+async def generate_game_idea(content: str, learning_profile: str,):
     try:
         prompt = GAME_IDEA_PROMPT.format(
             content=content,
@@ -26,9 +26,9 @@ def generate_game_idea(content: str, learning_profile: str,):
         
         client = get_client_for_service() # TODO ADD service var when implemented
         response = client.chat.completions.create(
-            model= LLAMA_3_70b, # FIXME Make this dynamic
+            model= "llama-3.1-8b-instant",
             messages=[
-                {"role": "system", "content": "You are an expert educational game designer."},
+                {"role": "system", "content": "You are an expert educational game designer. Your task is to generate a game idea based on the given content and learning profile. The game idea should be concise, engaging, and suitable for the target audience. Please ensure that the game idea is unique and not similar to any existing games. You should also provide a brief explanation of the game concept and mechanics. Yor game will idea be used to generate a game code, so it should be detailed enough to allow for code generation."},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.7
@@ -41,17 +41,17 @@ def generate_game_idea(content: str, learning_profile: str,):
         raise HTTPException(status_code=500, detail=f"Error generating game idea: {str(e)}")
 
 
-def generate_game_code(game_idea: str):
+async def generate_game_code(game_idea: str):
     try:
         prompt = GAME_CODE_PROMPT_OLD.format(
-            game_idea
+            game_idea=game_idea
         )
         
-        client = get_openai_client()
+        client = get_client_for_service("huggingface_hyberbolic")
         response = client.chat.completions.create(
-            model=LLAMA_3_70b,
+            model=QWEN_CODER_32b,
             messages=[
-                {"role": "system", "content": "You are an expert educational game developer."},
+                {"role": "system", "content": GAME_GEN_SYSTEM_PROMPT},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.7
@@ -93,16 +93,14 @@ def post_process_game_code(code):
     return code.strip()
 
 
-def generate_game(content: str, learning_profile: str):
+async def generate_game(content: str, learning_profile: str):
     """Generate a complete game based on content and learning profile"""
     
     # Generate game idea
-    game_idea = generate_game_idea(content, learning_profile)
-    print("🐍 File: services/game_generatory.py | Line: 92 | generate_game ~ game_idea",game_idea)
+    game_idea = await generate_game_idea(content, learning_profile)
     
     # Generate game code
-    game_code = generate_game_code(game_idea)
-    print("🐍 File: services/game_generatory.py | Line: 96 | generate_game ~ game_code",game_code)
+    game_code = await generate_game_code(game_idea)
     
     # Post-process the generated code
     # processed_code = post_process_game_code(game_code)
