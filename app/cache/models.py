@@ -14,7 +14,6 @@ def load_models_to_cache(conn: PGConnection, ttl: int = 3600) -> None:
     """ Load all active models into Redis cache. """
     try:
         models = get_all_models_services(conn)
-        print("🐍 File: cache/models.py | Line: 17 | load_models_to_cache ~ models",models)
 
         for model in models:
             model_id = model["id"]
