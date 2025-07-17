@@ -33,7 +33,7 @@ async def upload_file(
 
         if document_type == "book" and ext != "pdf":
             raise HTTPException(status_code=400, detail="Books must be in PDF format.")
-        elif document_type == "slides" and ext != "pptx":
+        elif document_type in ["slides", "presentation"] and ext != "pptx":
             raise HTTPException(
                 status_code=400, detail="Slides must be in .pptx format."
             )
