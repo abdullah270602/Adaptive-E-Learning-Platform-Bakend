@@ -1,50 +1,59 @@
 import subprocess
 import os
+import platform
 import logging
 
 logger = logging.getLogger(__name__)
 
 
 async def convert_pptx_to_pdf(input_path: str) -> str:
-    """ 
-    Converts a PowerPoint .pptx file to .pdf using LibreOffice CLI. 
-    Returns the path to the converted PDF. 
+    """
+    Converts a .pptx file to .pdf using LibreOffice (cross-platform).
     """
     try:
         if not input_path.lower().endswith(".pptx"):
-            raise ValueError("File must be a .pptx")
+            raise ValueError("Only .pptx files are supported.")
 
         output_dir = os.path.dirname(input_path)
-        
-        is_windows = os.getenv("OS", None) == "Windows"
-        soffice_cmd = (
-            r"C:\Program Files\LibreOffice\program\soffice.com"
-            if is_windows
-            else "/usr/bin/libreoffice"
+        filename = os.path.basename(input_path)
+        pdf_filename = filename.replace(".pptx", ".pdf")
+        pdf_path = os.path.join(output_dir, pdf_filename)
+
+        # Determine correct command
+        system = platform.system()
+        if system == "Windows":
+            soffice_cmd = r"C:\Program Files\LibreOffice\program\soffice.com"
+        else:
+            soffice_cmd = "/usr/bin/libreoffice"
+
+        command = [
+            soffice_cmd,
+            "--headless",
+            "--convert-to",
+            "pdf",
+            input_path,
+            "--outdir",
+            output_dir,
+        ]
+
+        logger.info(f"Running LibreOffice command: {' '.join(command)}")
+
+        result = subprocess.run(
+            command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
 
-        try:
-            logger.info(f"Converting {input_path} to PDF using LibreOffice CLI")
-            subprocess.run(
-                [soffice_cmd, "--headless", "--convert-to", "pdf", input_path, "--outdir", output_dir],
-                check=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
-
-        except FileNotFoundError:
-            raise RuntimeError(f"{soffice_cmd} not found. Make sure LibreOffice is installed.")
-        except subprocess.CalledProcessError as e:
-            raise RuntimeError(f"{soffice_cmd} conversion failed: {e.stderr.decode()}")
-
-        pdf_path = os.path.join(output_dir, os.path.basename(input_path).replace(".pptx", ".pdf"))
         if not os.path.exists(pdf_path):
-            raise FileNotFoundError(f"Conversion failed: PDF not found at {pdf_path}")
-        
-        logger.info(f"Converted PPTX to PDF successfully: {pdf_path}")
+            logger.error("PDF file not created. Output:")
+            logger.error(result.stdout.decode())
+            logger.error(result.stderr.decode())
+            raise FileNotFoundError(f"Expected output file not found: {pdf_path}")
+
+        logger.info(f"PDF conversion successful: {pdf_path}")
         return pdf_path
 
+    except subprocess.CalledProcessError as e:
+        logger.error(f"LibreOffice failed:\n{e.stderr.decode()}")
+        raise RuntimeError(f"LibreOffice conversion failed: {e.stderr.decode()}")
     except Exception as e:
-        import traceback; traceback.print_exc();
-        logger.error(f"Error converting PPTX to PDF: {e}")
+        logger.error(f"Unhandled error during conversion: {e}")
         raise
