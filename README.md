@@ -51,7 +51,7 @@ uv venv
 #### Install project dependencies
 
 ```bash
-uv sync --no-dev
+uv sync
 ```
 
 ---
