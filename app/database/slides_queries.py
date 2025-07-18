@@ -67,7 +67,7 @@ def get_slide_by_id(conn: PGConnection, slide_id: str, user_id: str) -> Optional
 
 def get_slide_metadata(conn: PGConnection, slide_id: str) -> Optional[dict]:
     query = """
-    SELECT id, user_id, title, original_filename, total_slides AS total_pages, created_at
+    SELECT id, user_id, title, original_filename, total_slides AS total_pages, s3_key, created_at
     FROM presentations
     WHERE id = %s;
     """
