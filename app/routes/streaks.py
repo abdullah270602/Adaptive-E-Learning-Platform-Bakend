@@ -23,6 +23,7 @@ def update_streak(user_id: str = Depends(get_current_user)):
                         }
                     ),
                 )
+            return result
     except Exception as e:
         return HTTPException(status_code=500, detail="Failed to update streak")
 

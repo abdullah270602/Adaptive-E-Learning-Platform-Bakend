@@ -47,6 +47,7 @@ def update_user_streak(conn: PGConnection, user_id: str) -> dict:
             "updated": True
         }
 
+
 def get_user_streak(conn: PGConnection, user_id: str) -> dict:
     with conn.cursor(cursor_factory=DictCursor) as cursor:
         cursor.execute("SELECT * FROM user_streaks WHERE user_id = %s", (user_id,))
