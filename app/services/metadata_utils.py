@@ -8,7 +8,7 @@ from app.database.slides_queries import get_slide_metadata
 def get_doc_metadata(conn: PGConnection, document_id: str, document_type: str) -> Optional[dict]:
     if document_type == "book":
         return get_book_metadata(conn, document_id)
-    elif document_type == "slide":
+    elif document_type == "slides" or document_type == "presentation":
         return get_slide_metadata(conn, document_id)
     elif document_type == "note":
         return "Notes Meta data not implemented yet"
