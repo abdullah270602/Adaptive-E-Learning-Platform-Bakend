@@ -10,6 +10,7 @@ from app.database.connection import PostgresConnection
 from app.database.study_mode_queries import get_last_chat_messages, insert_chat_messages, insert_tool_response
 from app.schemas.chat import ChatMessageCreate
 from app.services.diagram_generator import generate_diagrams
+from app.services.flashcard_generator import generate_flashcards
 from app.services.game_generator import generate_game_stub
 from app.services.minio_client import MinIOClientContext, get_pdf_bytes_from_minio
 from app.services.models import get_reply_from_model
@@ -27,6 +28,9 @@ LEARNING_TOOLS_WITH_PARAMS = {
     ),
     "game": lambda content, title, chapter_name, section_name, learning_profile: generate_game_stub(
         content, title, chapter_name, section_name, learning_profile
+    ),
+    "flashcard": lambda content, title, chapter_name, section_name, learning_profile, count=5: generate_flashcards(
+        content, title, chapter_name, section_name, learning_profile, count
     ),
 }
 
@@ -96,34 +100,48 @@ def save_interaction_to_db(chat_session_id, user_msg, llm_msg, model_id, tool_na
     now = datetime.utcnow()
     
     with PostgresConnection() as conn:
-        if tool_response_id and tool_response:
-            insert_tool_response(conn, tool_response_id, tool_name, tool_response, tool_response)
+        try:
+            # First insert tool response if exists
+            if tool_response_id and tool_response:
+                saved_tool_response_id = insert_tool_response(
+                    conn, tool_response_id, tool_name, tool_response, tool_response
+                )
+                if not saved_tool_response_id:
+                    raise Exception(f"Failed to insert tool response with id {tool_response_id}")
+            
+            # Then insert messages
+            messages = [
+                {
+                    "id": uuid4(),
+                    "chat_session_id": str(chat_session_id),
+                    "role": "user",
+                    "content": user_msg,
+                    "model_id": None,
+                    "tool_type": None,
+                    "tool_response_id": None,
+                    "created_at": now,
+                },
+                {
+                    "id": uuid4(),
+                    "chat_session_id": str(chat_session_id),
+                    "role": "assistant",
+                    "content": llm_msg,
+                    "model_id": str(model_id),
+                    "tool_type": tool_name,
+                    "tool_response_id": str(tool_response_id) if tool_response_id else None,
+                    "created_at": datetime.utcnow(),
+                }
+            ]
+            
+            insert_chat_messages(conn, messages)
+            
+            # Commit the transaction after both operations
+            conn.commit()
+            
+        except Exception as e:
+            conn.rollback()
+            raise e
         
-        messages = [
-            {
-                "id": uuid4(),
-                "chat_session_id": str(chat_session_id),
-                "role": "user",
-                "content": user_msg,
-                "model_id": None,
-                "tool_type": None,
-                "tool_response_id": None,
-                "created_at": now,
-            },
-            {
-                "id": uuid4(),
-                "chat_session_id": str(chat_session_id),
-                "role": "assistant",
-                "content": llm_msg,
-                "model_id": str(model_id),
-                "tool_type": tool_name,
-                "tool_response_id": str(tool_response_id) if tool_response_id else None,
-                "created_at": datetime.utcnow(),
-            },
-        ]
-        
-        insert_chat_messages(conn, messages)
-
 
 def detect_tool_and_clean_reply(reply: str) -> Tuple[Optional[dict], str]:
     """
@@ -234,7 +252,7 @@ async def handle_chat_message(payload: ChatMessageCreate, user_id: UUID) -> str:
 
         try:
             reply = get_reply_from_model(str(payload.model_id), prompt) # TODO Un comment after testing 🚨🚨🚨
-            # reply = "THIS IS A TEST REPLY xyz \n \n ..... TOOL_CALL: {\"tool\": \"diagram\"} ....."
+            # reply = "THIS IS A TEST REPLY xyz \n \n ..... TOOL_CALL: {\"tool\": \"flashcard\"} ....."
 
             # Detect tool trigger and clean reply if found
             detected_tool, cleaned_reply = detect_tool_and_clean_reply(reply)

@@ -705,6 +705,10 @@ TOOLS_AVAILABLE = {
         "name": "mini_game_generator",
         "description": "Creates interactive learning games and challenges using javascript and React"
     },
+    "flashcard": {
+        "name": "flashcard_generator",
+        "description": "Generates flashcards for student review"
+    },
 }
 
 
@@ -793,3 +797,63 @@ def build_chat_message_prompt(
         {"role": "system", "content": full_system_prompt},
         {"role": "user", "content": user_message},
     ]
+    
+    
+    
+FLASHCARD_SYSTEM_PROMPT = """
+You are an expert tutor specializing in creating effective flashcards for student revision.
+Your task is to generate flashcards that are:
+- Clear and focused on one concept per card
+- Appropriate for the student's learning level
+- Formatted as valid JSON only
+
+CRITICAL: You must respond with ONLY valid JSON. No explanations, no markdown formatting, no additional text.
+"""
+
+FLASH_CARD_GENERATION_PROMPT = """
+# Flashcard Generation Task
+
+## Document Information
+- **Title**: {title}
+- **Chapter**: {chapter_name}
+- **Section**: {section_name}
+- **Learning Profile**: {learning_profile}
+- **Target Count**: {count}
+
+## Content to Process
+```
+{content}
+```
+
+## Output Format (STRICT)
+Generate exactly **{count}** flashcards as a JSON array. Each flashcard must be an object with these exact keys:
+
+```json
+[
+  {{
+    "id": "",
+    "question": "Clear question text here",
+    "answer": "Concise but complete answer here",
+    "difficulty": 3,
+    "topic": "Main topic or concept",
+  }},
+  {{
+    "id": "",
+    "question": "Another question...",
+    "answer": "Another answer...",
+    "difficulty": 2,
+    "topic": "Another topic or concept",
+  }}
+]
+```
+
+## Requirements
+  - Questions should be clear and test **understanding**, not just memorization  
+  - Answers should be **concise but complete**  
+  - Adapt difficulty and style to the **learning profile**  
+  - Focus on the **most important concepts** from the content  
+  - Ensure variety in question types (definition, application, comparison, etc.)  
+
+## Critical Instructions (STRICT)
+**Return ONLY the JSON array, no other text or formatting**
+"""

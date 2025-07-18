@@ -128,19 +128,29 @@ def get_chat_history(conn: PGConnection, chat_session_id: UUID) -> list[dict]:
         
         rows = cursor.fetchall()
         return [dict(row) for row in rows]
-        
-        
+
+
 def insert_tool_response(conn: PGConnection, id: UUID, tool_type: str, response, response_text: str):
-    tool_response_json = json.dumps(response)
+    # Convert both response and response_text to JSON strings if they're dicts
+    tool_response_json = json.dumps(response) if isinstance(response, (dict, list)) else str(response)
+    response_text_str = None
+    
     with conn.cursor() as cursor:
-        cursor.execute(
-            """
-            INSERT INTO tool_responses (id, tool_type, response, response_text)
-            VALUES (%s, %s, %s, %s)
-            """,
-            (str(id), tool_type, tool_response_json, response_text)
-        )
-        conn.commit()
+        try:
+            cursor.execute(
+                """
+                INSERT INTO tool_responses (id, tool_type, response, response_text)
+                VALUES (%s, %s, %s, %s)
+                RETURNING id;
+                """,
+                (str(id), tool_type, tool_response_json, response_text_str)
+            )
+            result = cursor.fetchone()
+            conn.commit()
+            return result[0] if result else None
+        except Exception as e:
+            conn.rollback()
+            raise Exception(f"Failed to insert tool response: {str(e)}")
         
         
 def get_tool_response_by_id(conn: PGConnection, id: UUID) -> dict:
