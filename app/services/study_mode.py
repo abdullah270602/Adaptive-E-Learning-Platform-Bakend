@@ -31,18 +31,28 @@ LEARNING_TOOLS_WITH_PARAMS = {
 }
 
 
-def extract_text_from_page(
-    pdf_stream: BytesIO, page_number: int, title: str = ""
-) -> str:
-    """Extract text from a specific page of a PDF document."""
+def extract_text_from_page(pdf_stream: BytesIO, page_number: int, title: str = "") -> dict:
+    """Extract text and metadata from a specific page of a PDF document."""
     try:
         doc = fitz.open(stream=pdf_stream, filetype="pdf")
         if page_number < 0 or page_number >= len(doc):
             raise ValueError(f"Page number {page_number} out of bounds.")
-        text = doc[page_number].get_text()
-        doc.close()
+        
+        page = doc[page_number]
+        text = page.get_text()
+        images = page.get_images(full=False)
+        image_count = len(images)
+        
+        if image_count > 0 and not text.strip():
+            note = "This page contains one or more diagrams/images but no readable text."
 
-        return {"title": title, "text": text}
+        doc.close()
+        return {
+            "title": title,
+            "text": text,
+            "image_count": image_count,
+        }
+
     except Exception as e:
         logger.error(f"PDF extraction error: {e}", exc_info=True)
         raise
@@ -67,13 +77,13 @@ def get_page_content(
 
 
 async def run_parallel_context_tasks(
-    conn, user_id: UUID, document_id: UUID, page_number: int, chat_session_id: UUID
+    conn, user_id: UUID, document_id: UUID, documnet_type: str, page_number: int, chat_session_id: UUID
 ):
     """Run parallel tasks to fetch user learning profile, page content, and last chat messages."""
     try:
         return await asyncio.gather(
             asyncio.to_thread(get_learning_profile_with_cache, conn, user_id),
-            asyncio.to_thread(get_page_content, document_id, page_number, conn, "book"),
+            asyncio.to_thread(get_page_content, document_id, page_number, conn, documnet_type),
             asyncio.to_thread(get_last_chat_messages, conn, chat_session_id),
         )
     except Exception as e:
@@ -126,7 +136,7 @@ def detect_tool_and_clean_reply(reply: str) -> Tuple[Optional[dict], str]:
     """
     tool_info = None
     cleaned_reply = reply
-
+    
     try:
         match = re.search(r"TOOL_CALL:\s*(\{.*?\})", reply.strip(), re.DOTALL)
         if match:
@@ -167,18 +177,6 @@ async def run_tool(tool_name: str, context: dict) -> Optional[Any]:  # TODO make
         return None
 
 
-def clean_tool_response(tool_name: str, tool_result: Any, original_reply: str) -> str:
-    """
-    Optionally strip tool trigger from original reply and append formatted tool result.
-    """
-
-    return {
-        "tool_name": tool_name,
-        "tool_response": tool_result,
-        "llm_reply": original_reply,
-    }
-
-
 async def handle_chat_message(payload: ChatMessageCreate, user_id: UUID) -> str:
     """Handle a chat message by fetching context, building a prompt, getting a reply from the mode and running tools."""
     try:
@@ -189,6 +187,7 @@ async def handle_chat_message(payload: ChatMessageCreate, user_id: UUID) -> str:
                         conn,
                         user_id,
                         payload.document_id,
+                        payload.document_type,
                         payload.current_page,
                         payload.chat_session_id,
                     )
@@ -246,13 +245,13 @@ async def handle_chat_message(payload: ChatMessageCreate, user_id: UUID) -> str:
                 try:
                     tool_raw_result = await run_tool(detected_tool["tool_name"], context_for_tool)
 
-                    final_response = clean_tool_response(
-                        tool_name=detected_tool["tool_name"],
-                        tool_result=tool_raw_result,
-                        original_reply=cleaned_reply
-                        + "\n\n                            ________ORIGINAL REPLY_______: \n"
-                        + reply,
-                    )
+                    # final response dict
+                    final_response = {
+                        "llm_reply": cleaned_reply + "-----------------ORIGINAL REPLY-----------------\n" + reply,
+                        "tool_name": detected_tool["tool_name"],
+                        "tool_response": tool_raw_result,
+                    }
+                    
                 except Exception as tool_error:
                     logger.error(f"Tool execution failed: {tool_error}", exc_info=True)
                     raise HTTPException(
@@ -260,7 +259,7 @@ async def handle_chat_message(payload: ChatMessageCreate, user_id: UUID) -> str:
                     )
 
             else:
-                final_response = cleaned_reply
+                final_response = {"llm_reply": reply, "tool_name": None, "tool_response": None}
 
             return final_response
 
