@@ -21,7 +21,7 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 
-load_dotenv(override=True)
+load_dotenv(dotenv_path=".env")
 app = FastAPI()
 
 app.add_middleware(
