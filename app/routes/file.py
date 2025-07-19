@@ -1,6 +1,7 @@
 import logging
 import os
 import traceback
+import platform
 import uuid
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status
 from app.auth.dependencies import get_current_user
@@ -40,7 +41,8 @@ async def upload_file(
 
         unique_name = f"{uuid.uuid4()}_{file.filename}"
         
-        if os.getenv("OS") == "Windows":
+        if platform.system() == "Windows":
+            print("🐍 File: routes/file.py | Line: 44 |", os.getenv("OS"))
             tmp_path = os.path.join(os.getenv("TMP", "temp"), unique_name) # Use when on windows
         else:
             tmp_path = f"/tmp/{unique_name}"  # Use /tmp for Unix-like systems

@@ -1,6 +1,7 @@
 import subprocess
 import os
 import logging
+import platform
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +20,7 @@ async def convert_pptx_to_pdf(input_path: str) -> str:
         pdf_path = os.path.join(output_dir, pdf_filename)
 
         # Determine correct command
-        system = os.getenv("OS", None)
+        system = platform.system()
         if system == "Windows":
             soffice_cmd = r"C:\Program Files\LibreOffice\program\soffice.com"
         else:
