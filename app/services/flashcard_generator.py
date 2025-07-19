@@ -1,6 +1,7 @@
 import logging
 import json
 from typing import List, Optional
+from app.services.constants import KIMI_K2_INSTRUCT
 from app.services.models import get_client_for_service
 from app.services.prompts import FLASH_CARD_GENERATION_PROMPT, FLASHCARD_SYSTEM_PROMPT
 
@@ -90,7 +91,7 @@ async def generate_flashcards(
    
     try:
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model= KIMI_K2_INSTRUCT,
             messages=[
                 {"role": "system", "content": FLASHCARD_SYSTEM_PROMPT},
                 {"role": "user", "content": prompt}

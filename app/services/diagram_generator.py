@@ -1,5 +1,6 @@
 import re
 import logging
+from app.services.constants import KIMI_K2_INSTRUCT
 from app.services.models import get_client_for_service
 from app.services.prompts import DIAGRAM_GENERATION_PROMPT
 
@@ -40,7 +41,7 @@ async def generate_diagrams(content: str, title: str, chapter_name: str, section
         client = get_client_for_service("groq")
         logger.info(f"[Diagrams] Generating diagrams for: {title}")
         response = client.chat.completions.create(
-            model="meta-llama/llama-4-scout-17b-16e-instruct", # TODO set a model that is best for this kind of task
+            model= KIMI_K2_INSTRUCT,
             messages=[
                 {"role": "system", "content": "You are an expert at creating educational Mermaid flowcharts. Generate clear, meaningful diagrams that help users understand and remember concepts. Always return only Mermaid syntax with no additional text."},
                 {"role": "user", "content": prompt}
