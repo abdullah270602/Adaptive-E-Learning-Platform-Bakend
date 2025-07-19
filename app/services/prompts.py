@@ -698,15 +698,15 @@ Create a fully functional React component for the following game idea that integ
 
 TOOLS_AVAILABLE = {
     "diagram": {
-        "name": "diagram_generator",
+        "name": "diagram",
         "description": "Generates visual diagrams using mermaid syntax"
     },
     "game": {
-        "name": "mini_game_generator",
+        "name": "game",
         "description": "Creates interactive learning games and challenges using javascript and React"
     },
     "flashcard": {
-        "name": "flashcard_generator",
+        "name": "flashcard",
         "description": "Generates flashcards for student review"
     },
 }
