@@ -1,5 +1,7 @@
 import logging
 import os
+from itertools import cycle
+from threading import Lock
 from openai import OpenAI
 from app.cache.models import get_active_model_by_id_cached
 from app.database.connection import PostgresConnection
@@ -8,12 +10,42 @@ from app.services.constants import SERVICE_CONFIG
 
 logger = logging.getLogger(__name__)
 
+# State for rotation
+_groq_key_cycle = None
+_groq_key_lock = Lock()
+
+def _init_groq_key_cycle_from_env():
+    """Initialize the cycle from env variables like GROQ_API_KEY, GROQ_API_KEY_2, etc."""
+    
+    prefix = "GROQ_API_KEY"
+    keys = []
+
+    for k, v in os.environ.items():
+        if k.startswith(prefix) and v.strip():
+            logger.info(f"Found GROQ API key in environment variable: {k}")
+            keys.append(v.strip())
+
+    if not keys:
+        raise ValueError("No GROQ API keys found in environment.")
+
+    return cycle(keys)
+
 
 def get_client_for_service(service: str = "groq") -> OpenAI:
     try:
         config = SERVICE_CONFIG[service.lower()]
         base_url = config["base_url"]
-        api_key = os.getenv(config["api_key_env_var"])
+        
+        if service.lower() == "groq":
+            global _groq_key_cycle
+            with _groq_key_lock:
+                if not _groq_key_cycle:
+                    _groq_key_cycle = _init_groq_key_cycle_from_env()
+                api_key = next(_groq_key_cycle)
+                logger.info(f"Using GROQ API key: {api_key} (from cycle)")
+                
+        else:
+            api_key = os.getenv(config["api_key_env_var"])
 
         if not api_key:
             logger.critical(
