@@ -3,7 +3,7 @@ from authlib.integrations.starlette_client import OAuth
 from starlette.config import Config
 from starlette.requests import Request
 
-config = Config('.env') #TODO Load with os.getenv
+config = Config('.env')
 oauth = OAuth(config)
 
 oauth.register(
