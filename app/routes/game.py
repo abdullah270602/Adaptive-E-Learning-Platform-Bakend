@@ -12,7 +12,7 @@ router = APIRouter(prefix="/game", tags=["Game"])
 logger = logging.getLogger(__name__)
 
 
-@router.post("/generate")
+@router.post("/generate", deprecated=True)
 async def generate_game_endpoint(
     request: GameRequest,
     current_user: str = Depends(get_current_user),
