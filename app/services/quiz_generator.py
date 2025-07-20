@@ -1,23 +1,13 @@
 import logging
 import json
-from pydantic import BaseModel, Field, ValidationError
-from typing import List, Literal, Optional
+from typing import List
+from pydantic import ValidationError
+from app.schemas.quiz import QuizQuestion
 from app.services.constants import KIMI_K2_INSTRUCT
 from app.services.models import get_client_for_service
 from app.services.prompts import QUIZ_GENERATION_SYSTEM_PROMPT, QUIZ_GENERATION_USER_PROMPT
 
 logger = logging.getLogger(__name__)
-
-
-class QuizQuestion(BaseModel):
-    id: str
-    question: str
-    options: Optional[List[str]] = Field(default=[])
-    correct_answer: str
-    explanation: str
-    difficulty: Literal[1, 2, 3]
-    topic: str
-    question_type: Literal["multiple_choice", "true_false", "short_answer"]
     
     
 def clean_response_content(raw_content: str) -> str:
@@ -42,7 +32,8 @@ def validate_quiz_questions(raw_data: List[dict]) -> List[QuizQuestion]:
     valid = []
     for i, item in enumerate(raw_data):
         try:
-            valid.append(QuizQuestion(**item))
+            validated_question = QuizQuestion(**item)
+            valid.append(validated_question.model_dump())
         except ValidationError as e:
             logger.warning(f"Invalid quiz question at index {i}: {e}")
     return valid
@@ -90,8 +81,7 @@ async def generate_quiz_questions(
             return []
 
         validated_questions = validate_quiz_questions(questions)
-        validated_questions_dict = [question.model_dump() for question in validated_questions]
-        return validated_questions_dict
+        return validated_questions
 
     except json.JSONDecodeError as e:
         logger.error(f"Failed to parse JSON response: {e}")
