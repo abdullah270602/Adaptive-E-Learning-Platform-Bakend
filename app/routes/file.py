@@ -15,6 +15,7 @@ from app.database.slides_queries import get_slides_by_user
 from app.services.book_upload import process_uploaded_book
 from app.services.delete import delete_document_and_assets
 from app.services.presentation_upload import process_uploaded_slides
+from app.services.mcq_main import process_mcq_document
 
 logger = logging.getLogger(__name__)
 
@@ -69,9 +70,16 @@ async def upload_file(
             }
         else:
             raise HTTPException(status_code=400, detail="Unsupported document type.")
-
-        os.remove(tmp_path)
-        return {"message": "Upload successful", **result}
+        
+        # To be Started from here Make a Main file in service that calls other files in services 
+        extracted_Text = await process_mcq_document(tmp_path, file.filename)
+        
+        os.remove(tmp_path) # Later on You can remove the results from return based upon the need
+        return {
+            "message": "Upload successful",
+            **result,
+            **extracted_Text
+            }
 
     except HTTPException:
         raise
@@ -79,6 +87,9 @@ async def upload_file(
         traceback.print_exc()
         logger.error(f"[Upload] Failed to upload: {str(e)}")
         raise HTTPException(status_code=500, detail="Upload failed.")
+    
+
+    
 
 
 @router.get("/books")
