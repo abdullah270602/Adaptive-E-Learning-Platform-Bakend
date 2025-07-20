@@ -3,30 +3,40 @@ import os
 import logging
 import platform
 
+from app.services.constants import LINUX_SOFFICE_PATH, WINDOWS_SOFFICE_PATH
+
 logger = logging.getLogger(__name__)
 
 
-async def convert_pptx_to_pdf(input_path: str) -> str:
+def get_soffice_cmd() -> str:
+    """ Returns the path to the LibreOffice CLI """
+    system = platform.system()
+    
+    if system == "Windows":
+        return WINDOWS_SOFFICE_PATH
+    elif system == "Linux":
+        return LINUX_SOFFICE_PATH
+    else:
+        raise NotImplementedError(f"Unsupported OS: {system}")
+
+
+
+async def convert_to_pdf(input_path: str) -> str:
     """
-    Converts a .pptx file to .pdf using LibreOffice (cross-platform).
+    Converts supported file types (.pptx, .docx, .txt, etc.) to .pdf using LibreOffice CLI.
     """
     try:
-        if not input_path.lower().endswith(".pptx"):
-            raise ValueError("Only .pptx files are supported.")
+        if not os.path.exists(input_path):
+            raise FileNotFoundError(f"Input file does not exist: {input_path}")
 
         output_dir = os.path.dirname(input_path)
-        filename = os.path.basename(input_path)
-        pdf_filename = filename.replace(".pptx", ".pdf")
-        pdf_path = os.path.join(output_dir, pdf_filename)
+        base_name = os.path.splitext(os.path.basename(input_path))[0]
+        pdf_path = os.path.join(output_dir, f"{base_name}.pdf")
 
         # Determine correct command
-        system = platform.system()
-        if system == "Windows":
-            soffice_cmd = r"C:\Program Files\LibreOffice\program\soffice.com"
-        else:
-            soffice_cmd = "/usr/lib/libreoffice/program/soffice.bin" # for linux systems
-            
-        logger.info(f"Using LibreOffice command: {soffice_cmd}")
+        soffice_cmd = get_soffice_cmd()
+
+        logger.info(f"Starting conversion: {input_path} to PDF")
 
         command = [
             soffice_cmd,
@@ -43,6 +53,7 @@ async def convert_pptx_to_pdf(input_path: str) -> str:
         result = subprocess.run(
             command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
+        
 
         if not os.path.exists(pdf_path):
             logger.error("PDF file not created. Output:")
@@ -59,3 +70,4 @@ async def convert_pptx_to_pdf(input_path: str) -> str:
     except Exception as e:
         logger.error(f"Unhandled error during conversion: {e}")
         raise
+
