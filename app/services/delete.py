@@ -1,6 +1,7 @@
 
 from app.database.book_queries import delete_book_by_id, get_book_by_id
 from app.database.connection import PostgresConnection
+from app.database.notes_queries import delete_note_by_id, get_note_by_id
 from app.database.slides_queries import delete_slide_by_id, get_slide_by_id
 from app.services.minio_client import MinIOClientContext
 import os
@@ -32,7 +33,13 @@ def delete_document_and_assets(document_type: str, document_id: str, user_id: st
                 s3.delete_object(Bucket=bucket, Key=slide["s3_key"])
                 return True
 
-            elif document_type == "notes": 
+            elif document_type == "notes":
+                note = get_note_by_id(conn, document_id, user_id)
+                if not note:
+                    return False
+                delete_note_by_id(conn, document_id, user_id)
+                s3.delete_object(Bucket=bucket, Key=note["s3_key"])
+                 
                 return True
 
             else:
