@@ -836,14 +836,14 @@ Generate exactly **{count}** flashcards as a JSON array. Each flashcard must be 
 ```json
 [
   {{
-    "id": "",
+    "id": "f1",
     "question": "Clear question text here",
     "answer": "Concise but complete answer here",
     "difficulty": 3,
     "topic": "Main topic or concept",
   }},
   {{
-    "id": "",
+    "id": "f2",
     "question": "Another question...",
     "answer": "Another answer...",
     "difficulty": 2,
