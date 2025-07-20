@@ -32,11 +32,15 @@ async def process_uploaded_book(tmp_path: str, original_filename: str, toc_pages
                 s3_key=s3_key,
             )
             metadata["type"] = "book"
+            metadata["title"] = original_filename
+            
+            metadata.pop("section_collections") # FIXME remove this from the query it self
+            metadata.pop("chapter_collections") # FIXME remove this from the query it self
 
         return {
-            "s3_key": s3_key,
             "book_metadata": metadata,
             "presentation_metadata": None,
+            "note_metadata": None,
         }
     except Exception as e:
         import traceback; traceback.print_exc();
