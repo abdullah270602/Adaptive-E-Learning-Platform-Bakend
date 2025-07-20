@@ -14,6 +14,7 @@ from app.database.connection import PostgresConnection
 from app.database.notes_queries import get_notes_by_user
 from app.database.slides_queries import get_slides_by_user
 from app.routes.constants import NOTE_EXTENSIONS
+from app.services.book_processor import parse_toc_pages
 from app.services.book_upload import process_uploaded_book
 from app.services.delete import delete_document_and_assets
 from app.services.notes_upload import process_uploaded_notes
@@ -57,8 +58,13 @@ async def upload_file(
             f.write(file_bytes)
 
         if document_type == "book":
+            try:
+                start_page, end_page = await parse_toc_pages(toc_pages)
+            except ValueError as ve:
+                raise HTTPException(status_code=400, detail=str(ve))
+            
             result = await process_uploaded_book(
-                tmp_path, file.filename, toc_pages, current_user
+                tmp_path, file.filename, start_page, end_page, current_user
             )
         elif document_type in ["slides", "presentation"]:
             result = await process_uploaded_slides(
