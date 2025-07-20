@@ -30,7 +30,7 @@ def create_note_query(
 
 def get_notes_by_user(conn: PGConnection, user_id: UUID) -> List[dict]:
     query = """
-        SELECT id, title, filename, created_at, updated_at
+        SELECT id, title, created_at
         FROM notes
         WHERE user_id = %s
         ORDER BY created_at DESC;

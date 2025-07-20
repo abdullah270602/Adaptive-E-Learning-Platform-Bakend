@@ -11,6 +11,7 @@ from app.database.book_queries import (
     get_section_content_query,
 )
 from app.database.connection import PostgresConnection
+from app.database.notes_queries import get_notes_by_user
 from app.database.slides_queries import get_slides_by_user
 from app.routes.constants import NOTE_EXTENSIONS
 from app.services.book_upload import process_uploaded_book
@@ -163,3 +164,14 @@ def delete_file(
     except Exception as e:
         logging.error(f"[Delete] Failed to delete {document_type}: {e}")
         raise HTTPException(status_code=500, detail="Deletion failed.")
+
+
+@router.get("/notes", status_code=status.HTTP_200_OK)
+def list_user_notes(current_user: str = Depends(get_current_user)):
+    try:
+        with PostgresConnection() as conn:
+            notes = get_notes_by_user(conn, current_user)
+        return {"notes": notes}
+    except Exception as e:
+        logging.error(f"[List Notes] Failed to fetch notes: {e}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve notes.")
