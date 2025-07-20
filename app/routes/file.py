@@ -100,32 +100,6 @@ async def list_user_books(
         raise HTTPException(status_code=500, detail="Failed to retrieve user books")
 
 
-@router.get("/book-structure/{book_id}", status_code=status.HTTP_200_OK, deprecated=True)
-async def get_book_structure(
-    book_id: uuid.UUID, current_user: str = Depends(get_current_user)
-):
-    try:
-        with PostgresConnection() as conn:
-            return get_book_structure_query(conn, book_id)
-    except Exception as e:
-        traceback.print_exc();
-        raise HTTPException(status_code=500, detail="Failed to retrieve book structure")
-
-
-@router.get("/section/{section_id}", status_code=status.HTTP_200_OK, deprecated=True)
-async def get_section_content(
-    section_id: uuid.UUID, current_user: str = Depends(get_current_user)
-):
-    try:
-        with PostgresConnection() as conn:
-            return get_section_content_query(conn, section_id)
-    except Exception as e:
-        traceback.print_exc()
-        raise HTTPException(
-            status_code=500, detail="Failed to retrieve section content"
-        )
-
-
 @router.get("/slides", status_code=status.HTTP_200_OK)
 async def list_user_slides(current_user: str = Depends(get_current_user)):
     """ List all presentations for the current user """
