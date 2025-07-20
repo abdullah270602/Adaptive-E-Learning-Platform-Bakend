@@ -11,9 +11,13 @@ from app.database.book_queries import (
     get_section_content_query,
 )
 from app.database.connection import PostgresConnection
+from app.database.notes_queries import get_notes_by_user
 from app.database.slides_queries import get_slides_by_user
+from app.routes.constants import NOTE_EXTENSIONS
+from app.services.book_processor import parse_toc_pages
 from app.services.book_upload import process_uploaded_book
 from app.services.delete import delete_document_and_assets
+from app.services.notes_upload import process_uploaded_notes
 from app.services.presentation_upload import process_uploaded_slides
 from app.services.mcq_main import process_mcq_document
 
@@ -39,11 +43,12 @@ async def upload_file(
             raise HTTPException(
                 status_code=400, detail="Slides must be in .pptx format."
             )
+        elif document_type == "notes" and ext not in NOTE_EXTENSIONS:
+            raise HTTPException(status_code=400, detail=f"Notes must be in one of these {NOTE_EXTENSIONS} formats.")
 
         unique_name = f"{uuid.uuid4()}_{file.filename}"
         
         if platform.system() == "Windows":
-            print("🐍 File: routes/file.py | Line: 44 |", os.getenv("OS"))
             tmp_path = os.path.join(os.getenv("TMP", "temp"), unique_name) # Use when on windows
         else:
             tmp_path = f"/tmp/{unique_name}"  # Use /tmp for Unix-like systems
@@ -54,20 +59,22 @@ async def upload_file(
             f.write(file_bytes)
 
         if document_type == "book":
+            try:
+                start_page, end_page = await parse_toc_pages(toc_pages)
+            except ValueError as ve:
+                raise HTTPException(status_code=400, detail=str(ve))
+            
             result = await process_uploaded_book(
-                tmp_path, file.filename, toc_pages, current_user
+                tmp_path, file.filename, start_page, end_page, current_user
             )
         elif document_type in ["slides", "presentation"]:
             result = await process_uploaded_slides(
                 tmp_path, file.filename, current_user
             )
         elif document_type == "notes":
-            result = {
-                "type": document_type,
-                "notes_id": "",
-                "title": "",
-                "content": "Notes feature is not implemented yet.",
-            }
+            result = await process_uploaded_notes(
+                tmp_path, file.filename, current_user
+            )
         else:
             raise HTTPException(status_code=400, detail="Unsupported document type.")
         
@@ -109,32 +116,6 @@ async def list_user_books(
         raise HTTPException(status_code=500, detail="Failed to retrieve user books")
 
 
-@router.get("/book-structure/{book_id}", status_code=status.HTTP_200_OK, deprecated=True)
-async def get_book_structure(
-    book_id: uuid.UUID, current_user: str = Depends(get_current_user)
-):
-    try:
-        with PostgresConnection() as conn:
-            return get_book_structure_query(conn, book_id)
-    except Exception as e:
-        traceback.print_exc();
-        raise HTTPException(status_code=500, detail="Failed to retrieve book structure")
-
-
-@router.get("/section/{section_id}", status_code=status.HTTP_200_OK, deprecated=True)
-async def get_section_content(
-    section_id: uuid.UUID, current_user: str = Depends(get_current_user)
-):
-    try:
-        with PostgresConnection() as conn:
-            return get_section_content_query(conn, section_id)
-    except Exception as e:
-        traceback.print_exc()
-        raise HTTPException(
-            status_code=500, detail="Failed to retrieve section content"
-        )
-
-
 @router.get("/slides", status_code=status.HTTP_200_OK)
 async def list_user_slides(current_user: str = Depends(get_current_user)):
     """ List all presentations for the current user """
@@ -173,3 +154,14 @@ def delete_file(
     except Exception as e:
         logging.error(f"[Delete] Failed to delete {document_type}: {e}")
         raise HTTPException(status_code=500, detail="Deletion failed.")
+
+
+@router.get("/notes", status_code=status.HTTP_200_OK)
+def list_user_notes(current_user: str = Depends(get_current_user)):
+    try:
+        with PostgresConnection() as conn:
+            notes = get_notes_by_user(conn, current_user)
+        return {"notes": notes}
+    except Exception as e:
+        logging.error(f"[List Notes] Failed to fetch notes: {e}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve notes.")

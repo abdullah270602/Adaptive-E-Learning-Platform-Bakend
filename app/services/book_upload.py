@@ -8,7 +8,7 @@ from app.services.minio_client import MinIOClientContext, save_file_to_minio
 
 logger = logging.getLogger(__name__)
 
-async def process_uploaded_book(tmp_path: str, original_filename: str, toc_pages: str, user_id: str):
+async def process_uploaded_book(tmp_path: str, original_filename: str, start_page: int, end_page: int, user_id: str):
     """ Processes a book uploaded by the user """
     try:
         book_id = str(uuid.uuid4())
@@ -22,21 +22,24 @@ async def process_uploaded_book(tmp_path: str, original_filename: str, toc_pages
             create_book_query(conn, user_id, book_id, original_filename, original_filename, s3_key)
 
         metadata = None
-        if toc_pages:
-            start_page, end_page = map(int, toc_pages.split("-"))
-            metadata = await process_toc_pages(
-                pdf_path=tmp_path,
-                start_page=start_page,
-                end_page=end_page,
-                book_id=book_id,
-                s3_key=s3_key,
-            )
-            metadata["type"] = "book"
+
+        metadata = await process_toc_pages(
+            pdf_path=tmp_path,
+            start_page=start_page,
+            end_page=end_page,
+            book_id=book_id,
+            s3_key=s3_key,
+        )
+        metadata["type"] = "book"
+        metadata["title"] = original_filename
+        
+        metadata.pop("section_collections") # FIXME remove this from the query it self
+        metadata.pop("chapter_collections") # FIXME remove this from the query it self
 
         return {
-            "s3_key": s3_key,
             "book_metadata": metadata,
             "presentation_metadata": None,
+            "note_metadata": None,
         }
     except Exception as e:
         import traceback; traceback.print_exc();

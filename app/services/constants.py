@@ -12,6 +12,10 @@ KIMI_K2_INSTRUCT = "moonshotai/kimi-k2-instruct"
 
 KIMI_K2_INSTRUCT_ID ="0068ad8d-ff21-4633-8c8e-6bb0282e0d82" # Kimi-K2-Instruct
 
+
+WINDOWS_SOFFICE_PATH = r"C:\Program Files\LibreOffice\program\soffice.com"
+LINUX_SOFFICE_PATH = "/usr/lib/libreoffice/program/soffice.bin"
+
 SERVICE_CONFIG = {
     "groq": {
         "base_url": "https://api.groq.com/openai/v1",

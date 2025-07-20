@@ -140,3 +140,20 @@ async def process_toc_pages(
         logging.error(f"[TOC] Failed in process_toc_pages_postgres: {e}")
         raise HTTPException(status_code=500, detail="TOC processing failed.")
 
+
+async def parse_toc_pages(toc_pages: str) -> tuple[int, int]:
+    try:
+        if "-" in toc_pages:
+            parts = toc_pages.split("-")
+            if len(parts) != 2:
+                raise ValueError("Invalid TOC range format.")
+            start_page, end_page = map(int, parts)
+        else:
+            start_page = end_page = int(toc_pages)
+        
+        if start_page <= 0 or end_page < start_page:
+            raise ValueError("Invalid TOC page numbers.")
+        
+        return start_page, end_page
+    except Exception as e:
+        raise ValueError(f"Invalid `toc_pages` format: {toc_pages} — {e}")
