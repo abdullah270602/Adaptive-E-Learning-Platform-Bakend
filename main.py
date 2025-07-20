@@ -60,3 +60,5 @@ app.include_router(models_router)
 app.include_router(study_mode_router)
 app.include_router(streaks_router)
 app.include_router(transcribe_router)
+
+print("Testing the Merge")
