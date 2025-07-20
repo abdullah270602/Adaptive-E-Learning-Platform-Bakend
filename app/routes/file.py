@@ -12,8 +12,10 @@ from app.database.book_queries import (
 )
 from app.database.connection import PostgresConnection
 from app.database.slides_queries import get_slides_by_user
+from app.routes.constants import NOTE_EXTENSIONS
 from app.services.book_upload import process_uploaded_book
 from app.services.delete import delete_document_and_assets
+from app.services.notes_upload import process_uploaded_notes
 from app.services.presentation_upload import process_uploaded_slides
 
 logger = logging.getLogger(__name__)
@@ -38,11 +40,12 @@ async def upload_file(
             raise HTTPException(
                 status_code=400, detail="Slides must be in .pptx format."
             )
+        elif document_type == "notes" and ext not in NOTE_EXTENSIONS:
+            raise HTTPException(status_code=400, detail=f"Notes must be in one of these {NOTE_EXTENSIONS} formats.")
 
         unique_name = f"{uuid.uuid4()}_{file.filename}"
         
         if platform.system() == "Windows":
-            print("🐍 File: routes/file.py | Line: 44 |", os.getenv("OS"))
             tmp_path = os.path.join(os.getenv("TMP", "temp"), unique_name) # Use when on windows
         else:
             tmp_path = f"/tmp/{unique_name}"  # Use /tmp for Unix-like systems
@@ -61,16 +64,14 @@ async def upload_file(
                 tmp_path, file.filename, current_user
             )
         elif document_type == "notes":
-            result = {
-                "type": document_type,
-                "notes_id": "",
-                "title": "",
-                "content": "Notes feature is not implemented yet.",
-            }
+            result = await process_uploaded_notes(
+                tmp_path, file.filename, current_user
+            )
         else:
             raise HTTPException(status_code=400, detail="Unsupported document type.")
 
-        os.remove(tmp_path)
+
+        os.remove(tmp_path) # Remove this if fiel is required further somewhere
         return {"message": "Upload successful", **result}
 
     except HTTPException:
