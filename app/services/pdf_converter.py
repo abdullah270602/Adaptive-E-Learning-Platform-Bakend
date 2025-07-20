@@ -36,7 +36,7 @@ async def convert_to_pdf(input_path: str) -> str:
         # Determine correct command
         soffice_cmd = get_soffice_cmd()
 
-        logger.info(f"Starting conversion: {input_path} to PDF")
+        logger.info(f"Starting conversion: {input_path.split(".")[-1].upper()} to PDF")
 
         command = [
             soffice_cmd,
