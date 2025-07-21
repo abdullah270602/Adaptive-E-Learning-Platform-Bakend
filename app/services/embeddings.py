@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 HUGGINGFACE_API_URL = "https://router.huggingface.co/hf-inference/models/sentence-transformers/all-MiniLM-L6-v2/pipeline/feature-extraction"
-HF_TOKEN = os.getenv("HF_TOKEN_2")
+HF_TOKEN = os.getenv("HF_TOKEN")
 
 HEADERS = {
     "Authorization": f"Bearer {HF_TOKEN}",
