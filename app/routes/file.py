@@ -77,8 +77,8 @@ async def upload_file(
         if not doc_id:
             raise HTTPException(status_code=500, detail="Document ID not found after processing.")
 
-        # ✅ MCQ embedding logic comes AFTER all other processing
-        extracted_Text = await process_mcq_document(
+        # ✅ Call MCQ processing pipeline
+        storage_result = await process_mcq_document(
             tmp_path=tmp_path,
             filename=file.filename,
             user_id=current_user,
@@ -86,21 +86,10 @@ async def upload_file(
             doc_type=document_type
         )
 
-        # ✅ Only delete temp file once everything is done
-        os.remove(tmp_path)
-        print("=== Final Response ===")
-        print({
-        "message": "Upload successful",
-        **result,
-        **extracted_Text})
-
-
-        
-
         return {
             "message": "Upload successful",
             **result,
-            **extracted_Text
+            **storage_result  # wrapped inside "storage_result" key
         }
 
     except HTTPException:

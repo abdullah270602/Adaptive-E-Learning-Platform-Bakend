@@ -1,7 +1,8 @@
 import os
 from app.services.extraction import extract_and_preprocess_text
 from app.services.chunking import chunk_text
-from app.services.embeddings import embed_texts  # New import
+from app.services.embeddings import embed_texts
+from app.services.vectorstorage import store_embeddings_to_qdrant  # <-- new import
 
 async def process_mcq_document(
     tmp_path: str,
@@ -33,19 +34,27 @@ async def process_mcq_document(
             max_chunks=2000
         )
 
-        # Step 3: Embed the chunks
+        # Step 3: Generate embeddings
         embedded_data = await embed_texts(
             chunks=chunks,
             user_id=user_id,
             doc_id=doc_id,
             doc_type=doc_type
         )
+        if not embedded_data:
+            return {
+                "error": "Embedding failed. No embeddings were returned."
+            }
 
-        # Step 4: Return processed data
+        # Step 4: Store embeddings in Qdrant
+        storage_result = store_embeddings_to_qdrant(embedded_data)
+
+        # Step 5: Return useful info
+      # Step 5: Return storage result only, wrapped under key
         return {
-            "Chunks_count": len(chunks),
-            "embeddings": embedded_data
+            "storage_result": storage_result
         }
+
 
     except Exception as e:
         raise RuntimeError(f"[MCQ Pipeline] Failed: {str(e)}")

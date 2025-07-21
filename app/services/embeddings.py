@@ -112,7 +112,7 @@ async def embed_texts(
                     "doc_id": doc_id,
                     "doc_type": doc_type,
                     "chunk_index": index,
-                    "chunk_text": chunks[index][:200] + "..." if len(chunks[index]) > 200 else chunks[index],
+                    "chunk_text": chunks[index],
                     "chunk_length": len(chunks[index]),
                     "embedding_dim": len(emb)
                 }
@@ -126,15 +126,9 @@ async def embed_texts(
     if failed_count > 0:
         print(f"⚠️  {failed_count} chunks failed to embed")
     
-    return {
-    "message": "Embeddings generated successfully.",
-    "total_chunks": len(embedded_docs),
-    "embedding_dim": len(embedded_docs[0]["embedding"]) if embedded_docs else 0,
-    "doc_id": doc_id,
-    "user_id": user_id,
-    "doc_type": doc_type,
-    "chunks_metadata": [doc["metadata"] for doc in embedded_docs]
-    }
+    return embedded_docs
+    
+    
 
 # Utility function for single text embedding
 async def embed_single_text(text: str) -> List[float]:

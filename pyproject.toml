@@ -19,6 +19,7 @@ dependencies = [
     "python-jose>=3.5.0",
     "python-multipart>=0.0.20",
     "python-pptx>=1.0.2",
+    "qdrant-client>=1.15.0",
     "redis>=6.2.0",
     "uvicorn>=0.34.3",
 ]
