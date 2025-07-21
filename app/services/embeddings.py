@@ -1,13 +1,16 @@
+import logging
 import httpx
 import os
 import asyncio
 from typing import List, Dict
-from dotenv import load_dotenv
 
-load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 HUGGINGFACE_API_URL = "https://router.huggingface.co/hf-inference/models/sentence-transformers/all-MiniLM-L6-v2/pipeline/feature-extraction"
+
 HF_TOKEN = os.getenv("HF_TOKEN")
+logger.info(f"Using Hugging Face token: {HF_TOKEN}")
 
 HEADERS = {
     "Authorization": f"Bearer {HF_TOKEN}",
