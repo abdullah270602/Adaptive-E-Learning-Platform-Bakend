@@ -29,7 +29,7 @@ router = APIRouter(prefix="/file", tags=["Files"])
 @router.post("/upload", status_code=status.HTTP_201_CREATED)
 async def upload_file(
     file: UploadFile = File(...),
-    document_type: str = Form(...),  # book, slides, notes
+    document_type: str = Form(...),
     toc_pages: str = Form(None),
     current_user: str = Depends(get_current_user),
 ):
@@ -40,53 +40,68 @@ async def upload_file(
         if document_type == "book" and ext != "pdf":
             raise HTTPException(status_code=400, detail="Books must be in PDF format.")
         elif document_type in ["slides", "presentation"] and ext != "pptx":
-            raise HTTPException(
-                status_code=400, detail="Slides must be in .pptx format."
-            )
+            raise HTTPException(status_code=400, detail="Slides must be in .pptx format.")
         elif document_type == "notes" and ext not in NOTE_EXTENSIONS:
             raise HTTPException(status_code=400, detail=f"Notes must be in one of these {NOTE_EXTENSIONS} formats.")
 
         unique_name = f"{uuid.uuid4()}_{file.filename}"
+        tmp_path = os.path.join(os.getenv("TMP", "temp"), unique_name) if platform.system() == "Windows" else f"/tmp/{unique_name}"
         
-        if platform.system() == "Windows":
-            tmp_path = os.path.join(os.getenv("TMP", "temp"), unique_name) # Use when on windows
-        else:
-            tmp_path = f"/tmp/{unique_name}"  # Use /tmp for Unix-like systems
-
-
         file_bytes = await file.read()
         with open(tmp_path, "wb") as f:
             f.write(file_bytes)
+
+        result = {}
+        doc_id = None
 
         if document_type == "book":
             try:
                 start_page, end_page = await parse_toc_pages(toc_pages)
             except ValueError as ve:
                 raise HTTPException(status_code=400, detail=str(ve))
-            
-            result = await process_uploaded_book(
-                tmp_path, file.filename, start_page, end_page, current_user
-            )
+
+            result = await process_uploaded_book(tmp_path, file.filename, start_page, end_page, current_user)
+            doc_id = result.get("book_metadata", {}).get("book_id")
+
         elif document_type in ["slides", "presentation"]:
-            result = await process_uploaded_slides(
-                tmp_path, file.filename, current_user
-            )
+            result = await process_uploaded_slides(tmp_path, file.filename, current_user)
+            doc_id = result.get("presentation_metadata", {}).get("presentation_id")
+
         elif document_type == "notes":
-            result = await process_uploaded_notes(
-                tmp_path, file.filename, current_user
-            )
+            result = await process_uploaded_notes(tmp_path, file.filename, current_user)
+            doc_id = result.get("note_metadata", {}).get("note_id")
+
         else:
             raise HTTPException(status_code=400, detail="Unsupported document type.")
+
+        if not doc_id:
+            raise HTTPException(status_code=500, detail="Document ID not found after processing.")
+
+        # ✅ MCQ embedding logic comes AFTER all other processing
+        extracted_Text = await process_mcq_document(
+            tmp_path=tmp_path,
+            filename=file.filename,
+            user_id=current_user,
+            doc_id=doc_id,
+            doc_type=document_type
+        )
+
+        # ✅ Only delete temp file once everything is done
+        os.remove(tmp_path)
+        print("=== Final Response ===")
+        print({
+        "message": "Upload successful",
+        **result,
+        **extracted_Text})
+
+
         
-        # To be Started from here Make a Main file in service that calls other files in services 
-        extracted_Text = await process_mcq_document(tmp_path, file.filename)
-        
-        os.remove(tmp_path) # Later on You can remove the results from return based upon the need
+
         return {
             "message": "Upload successful",
             **result,
             **extracted_Text
-            }
+        }
 
     except HTTPException:
         raise
@@ -94,6 +109,7 @@ async def upload_file(
         traceback.print_exc()
         logger.error(f"[Upload] Failed to upload: {str(e)}")
         raise HTTPException(status_code=500, detail="Upload failed.")
+
     
 
     
