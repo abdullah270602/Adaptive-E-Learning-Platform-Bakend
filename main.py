@@ -21,7 +21,10 @@ logging.basicConfig(
 )
 
 load_dotenv(dotenv_path=".env")
-app = FastAPI()
+app = FastAPI(
+    title="Adaptive Learn AI Backend",
+    description="Backend for Adaptive Learn AI",
+)
 
 app.add_middleware(
     CORSMiddleware,
