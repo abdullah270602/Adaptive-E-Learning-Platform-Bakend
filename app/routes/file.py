@@ -1,3 +1,4 @@
+from enum import Enum
 import logging
 import os
 import traceback
@@ -24,11 +25,16 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/file", tags=["Files"])
 
+class DocumentType(str, Enum):
+    BOOK = "book"
+    NOTES = "notes"
+    PRESENTATION = "presentation"
+
 
 @router.post("/upload", status_code=status.HTTP_201_CREATED)
 async def upload_file(
     file: UploadFile = File(...),
-    document_type: str = Form(...),  # book, slides, notes
+    document_type: DocumentType = Form(...),
     toc_pages: str = Form(None),
     current_user: str = Depends(get_current_user),
 ):
