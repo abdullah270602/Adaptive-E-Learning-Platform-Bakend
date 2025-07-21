@@ -1,7 +1,10 @@
+import logging
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import Distance, VectorParams, PointStruct
 from uuid import uuid4
 import os
+
+logger = logging.getLogger(__name__)
 
 QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY", None)
@@ -14,10 +17,47 @@ client = QdrantClient(
 DEFAULT_VECTOR_SIZE = 384  # Assumes all-MiniLM embeddings
 DEFAULT_COLLECTION_PREFIX = "user_docs_"
 
+
+
+def empty_collection(user_id: str) -> dict:
+    """
+    Deletes all points from a user's collection.
+    """
+    try:
+        collection_name = f"{DEFAULT_COLLECTION_PREFIX}{user_id}"
+        
+        if not client.collection_exists(collection_name):
+            return {
+                "status": "error",
+                "message": f"Collection {collection_name} does not exist"
+            }
+        
+        # Use Qdrant's Filter object with MatchAll
+        client.delete_collection(
+            collection_name=collection_name
+        )
+        
+        return {
+            "status": "success",
+            "message": f"Collection {collection_name} has been emptied",
+            "collection_name": collection_name
+        }
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        logger.error(f"[Vector Storage] Failed to empty collection: {e}")
+        return None
+
+
+
+
 def ensure_collection_exists(user_id: str, vector_size: int = DEFAULT_VECTOR_SIZE) -> str:
     """
     Ensure that a Qdrant collection exists for the given user.
     """
+    result = empty_collection(user_id)
+    logger.info(f"[Vector Storage] Emptying collection result: {result}")
+    
+    
     collection_name = f"{DEFAULT_COLLECTION_PREFIX}{user_id}"
     if not client.collection_exists(collection_name):
         client.create_collection(
