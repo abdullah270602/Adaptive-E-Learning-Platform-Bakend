@@ -10,11 +10,14 @@ def download_nltk_resources():
     try:
         # Try to find the resources first
         nltk.data.find('tokenizers/punkt')
+        nltk.data.find('tokenizers/punkt_tab')
         nltk.data.find('corpora/stopwords')
     except LookupError:
         # Download if not found
         print("Downloading NLTK resources...")
         nltk.download('punkt', quiet=True)
+        nltk.download('punkt_tab', quiet=True)
+        
         nltk.download('stopwords', quiet=True)
         print("NLTK resources downloaded successfully.")
 
