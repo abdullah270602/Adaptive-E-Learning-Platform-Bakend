@@ -43,7 +43,6 @@ async def process_mcq_document(
 
         # Step 4: Return processed data
         return {
-            "chunks": chunks,
             "Chunks_count": len(chunks),
             "embeddings": embedded_data
         }

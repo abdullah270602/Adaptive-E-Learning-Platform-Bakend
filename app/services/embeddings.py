@@ -1,67 +1,147 @@
 import httpx
 import os
-from typing import List, Dict
 import asyncio
+from typing import List, Dict
 from dotenv import load_dotenv
 
 load_dotenv()
 
-
 HUGGINGFACE_API_URL = "https://router.huggingface.co/hf-inference/models/sentence-transformers/all-MiniLM-L6-v2/pipeline/feature-extraction"
-HF_TOKEN = os.getenv("HF_TOKEN")  # Make sure this is set in your .env
-
-
+HF_TOKEN = os.getenv("HF_TOKEN_2")
 
 HEADERS = {
     "Authorization": f"Bearer {HF_TOKEN}",
     "Content-Type": "application/json"
 }
 
-async def embed_single_chunk(client: httpx.AsyncClient, chunk: str) -> List[float]:
-    try:
-        response = await client.post(
-            HUGGINGFACE_API_URL,
-            json={"inputs": chunk},
-            headers=HEADERS,
-            timeout=60
-        )
-        response.raise_for_status()
+def preprocess_chunk(chunk: str, max_length: int = 512) -> str:
+    """Truncate chunk to model token limits if needed"""
+    # Rough token estimation (1 token ≈ 4 characters for English)
+    estimated_tokens = len(chunk) // 4
+    if estimated_tokens > max_length:
+        # Truncate to approximate token limit, leaving room for special tokens
+        char_limit = (max_length - 10) * 4
+        chunk = chunk[:char_limit]
+        
+        # Try to end at a word boundary
+        last_space = chunk.rfind(' ')
+        if last_space > char_limit * 0.8:  # Only if we don't lose too much
+            chunk = chunk[:last_space]
+    
+    return chunk
 
-        data = response.json()
+async def embed_single_chunk(client: httpx.AsyncClient, chunk: str, max_retries: int = 3) -> List[float]:
+    """Embed a single chunk with retry logic and preprocessing"""
+    processed_chunk = preprocess_chunk(chunk)
+    
+    for attempt in range(max_retries):
+        try:
+            response = await client.post(
+                HUGGINGFACE_API_URL,
+                json={"inputs": processed_chunk},
+                headers=HEADERS,
+                timeout=60
+            )
+            response.raise_for_status()
 
-        # Hugging Face returns a list of vectors
-        if isinstance(data, list) and all(isinstance(val, float) for val in data):
-            return data
-        else:
-            print(f"Unexpected response format: {data}")
-            return []
+            data = response.json()
 
-    except Exception as e:
-        print(f"Embedding failed for chunk: {e}")
-        return []
+            # Hugging Face returns a list of vectors
+            if isinstance(data, list) and all(isinstance(val, (int, float)) for val in data):
+                return data
+            else:
+                print(f"Unexpected response format on attempt {attempt + 1}: {data}")
+                
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 429:  # Rate limit
+                wait_time = 2 ** attempt  # Exponential backoff
+                print(f"Rate limited, waiting {wait_time}s before retry {attempt + 1}")
+                await asyncio.sleep(wait_time)
+            elif e.response.status_code >= 500:  # Server error
+                wait_time = 1 * attempt
+                print(f"Server error, waiting {wait_time}s before retry {attempt + 1}")
+                await asyncio.sleep(wait_time)
+            else:
+                print(f"HTTP error on attempt {attempt + 1}: {e}")
+                break
+        except Exception as e:
+            print(f"Embedding failed on attempt {attempt + 1}: {e}")
+            if attempt < max_retries - 1:
+                await asyncio.sleep(1)
+
+    return []
 
 async def embed_texts(
     chunks: List[str],
     user_id: str,
     doc_id: str,
-    doc_type: str
+    doc_type: str,
+    max_concurrent: int = 5
 ) -> List[Dict]:
-    """Returns list of dicts containing embeddings and metadata."""
+    """
+    Generate embeddings for chunks with rate limiting and error handling.
+    Returns list of dicts containing embeddings and metadata.
+    """
+    if not chunks:
+        print("No chunks provided")
+        return []
+    
+    print(f"Generating embeddings for {len(chunks)} chunks...")
+    
+    # Rate limiting with semaphore
+    semaphore = asyncio.Semaphore(max_concurrent)
+    
+    async def embed_with_semaphore(client: httpx.AsyncClient, chunk: str, index: int):
+        async with semaphore:
+            embedding = await embed_single_chunk(client, chunk)
+            return index, embedding
+
     async with httpx.AsyncClient() as client:
-        tasks = [embed_single_chunk(client, chunk) for chunk in chunks]
-        embeddings = await asyncio.gather(*tasks)
+        tasks = [embed_with_semaphore(client, chunk, i) for i, chunk in enumerate(chunks)]
+        results = await asyncio.gather(*tasks)
 
     embedded_docs = []
-    for i, emb in enumerate(embeddings):
-        if not emb:
-            continue  # Skip if embedding failed
-        embedded_docs.append({
-            "embedding": emb,
-            "metadata": {
-                "user_id": user_id,
-                "doc_id": doc_id,
-                "doc_type": doc_type,
-                "chunk_index": i
-            }
-        })
-    return embedded_docs
+    failed_count = 0
+    
+    for index, emb in results:
+        if emb:  # Only add successful embeddings
+            embedded_docs.append({
+                "embedding": emb,
+                "metadata": {
+                    "user_id": user_id,
+                    "doc_id": doc_id,
+                    "doc_type": doc_type,
+                    "chunk_index": index,
+                    "chunk_text": chunks[index][:200] + "..." if len(chunks[index]) > 200 else chunks[index],
+                    "chunk_length": len(chunks[index]),
+                    "embedding_dim": len(emb)
+                }
+            })
+        else:
+            failed_count += 1
+    
+    success_rate = (len(embedded_docs) / len(chunks)) * 100 if chunks else 0
+    print(f"Embedding complete: {len(embedded_docs)}/{len(chunks)} successful ({success_rate:.1f}%)")
+    
+    if failed_count > 0:
+        print(f"⚠️  {failed_count} chunks failed to embed")
+    
+    return {
+    "message": "Embeddings generated successfully.",
+    "total_chunks": len(embedded_docs),
+    "embedding_dim": len(embedded_docs[0]["embedding"]) if embedded_docs else 0,
+    "doc_id": doc_id,
+    "user_id": user_id,
+    "doc_type": doc_type,
+    "chunks_metadata": [doc["metadata"] for doc in embedded_docs]
+    }
+
+# Utility function for single text embedding
+async def embed_single_text(text: str) -> List[float]:
+    """Generate embedding for a single text string"""
+    try:
+        async with httpx.AsyncClient() as client:
+            return await embed_single_chunk(client, text)
+    except Exception as e:
+        print(f"Single text embedding failed: {e}")
+        return []
