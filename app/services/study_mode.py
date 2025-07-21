@@ -20,6 +20,8 @@ import asyncio
 import fitz
 from datetime import datetime
 
+from app.services.quiz_generator import generate_quiz_questions
+
 logger = logging.getLogger(__name__)
 
 LEARNING_TOOLS_WITH_PARAMS = {
@@ -30,6 +32,9 @@ LEARNING_TOOLS_WITH_PARAMS = {
         content, title, chapter_name, section_name, learning_profile
     ),
     "flashcard": lambda content, title, chapter_name, section_name, learning_profile, count=5: generate_flashcards(
+        content, title, chapter_name, section_name, learning_profile, count
+    ),
+    "quiz": lambda content, title, chapter_name, section_name, learning_profile, count=5: generate_quiz_questions(
         content, title, chapter_name, section_name, learning_profile, count
     ),
 }
@@ -179,17 +184,9 @@ async def run_tool(tool_name: str, context: dict) -> Optional[Any]:  # TODO make
         if tool_name not in LEARNING_TOOLS_WITH_PARAMS:
             return {"error": f"Tool '{tool_name}' not found"}
     
-        tool = LEARNING_TOOLS_WITH_PARAMS[tool_name](**context)
+        tool = LEARNING_TOOLS_WITH_PARAMS[tool_name.lower()](**context)
         return await tool
         
-
-        return {
-            "diagrams": [
-                "graph TD\n    LogicalThinking  -->  BuildingBlocks\n    BuildingBlocks  -->  ProblemSolvingSkills\n    ProblemSolvingSkills  -->  BetterProgramming",
-                "graph TD\n    CurrentSkillLevel  -->  ImproveSkillLevel\n    ImproveSkillLevel  -->  NewKnowledge\n    NewKnowledge  -->  EnhancedProblemSolving",
-                "graph TD\n    ConceptUnderstanding  -->  ClearInstructions\n    ClearInstructions  -->  FocusAndRetention\n    FocusAndRetention  -->  DeepUnderstanding",
-            ]
-        }
     except Exception as e:
         logger.error(f"Error running tool {tool_name}: {e}", exc_info=True)
         return None
@@ -252,7 +249,7 @@ async def handle_chat_message(payload: ChatMessageCreate, user_id: UUID) -> str:
 
         try:
             reply = get_reply_from_model(str(payload.model_id), prompt) # TODO Un comment after testing 🚨🚨🚨
-            # reply = "THIS IS A TEST REPLY xyz \n \n ..... TOOL_CALL: {\"tool\": \"flashcard\"} ....."
+            # reply = "THIS IS A TEST REPLY xyz \n \n ..... TOOL_CALL: {\"tool\": \"quiz\"} ....."
 
             # Detect tool trigger and clean reply if found
             detected_tool, cleaned_reply = detect_tool_and_clean_reply(reply)
@@ -265,7 +262,7 @@ async def handle_chat_message(payload: ChatMessageCreate, user_id: UUID) -> str:
 
                     # final response dict
                     final_response = {
-                        "llm_reply": cleaned_reply + "-----------------ORIGINAL REPLY-----------------\n" + reply,
+                        "llm_reply": cleaned_reply,
                         "tool_name": detected_tool["tool_name"],
                         "tool_response": tool_raw_result,
                     }

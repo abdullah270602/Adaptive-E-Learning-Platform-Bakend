@@ -709,6 +709,10 @@ TOOLS_AVAILABLE = {
         "name": "flashcard",
         "description": "Generates flashcards for student review"
     },
+    "quiz": {
+        "name": "quiz",
+        "description": "Generates quiz questions for student assessment, practice, learning or understanding"
+    },
 }
 
 
@@ -760,9 +764,10 @@ def build_chat_message_prompt(
 
         **Only use tools when they would clearly enhance learning for THIS specific question.**
 
+        - Do NOT reply with information when a tool can don that better, like diagrams, flashcard, etc.
         - DO NOT use tools just to make your answer seem fancy.
         - DO NOT use tools for things you can explain yourself (definitions, concepts, summaries).
-        - DO NOT generate diagrams, games, etc. manually — ask the backend tool.
+        - **DO NOT generate diagrams, games, etc. manually — ask the backend tool. (STRICT)**
         - DO NOT include `"args"` or extra data — backend will handle it.
 
         #### When to Use a Tool:
@@ -831,14 +836,14 @@ Generate exactly **{count}** flashcards as a JSON array. Each flashcard must be 
 ```json
 [
   {{
-    "id": "",
+    "id": "f1",
     "question": "Clear question text here",
     "answer": "Concise but complete answer here",
     "difficulty": 3,
     "topic": "Main topic or concept",
   }},
   {{
-    "id": "",
+    "id": "f2",
     "question": "Another question...",
     "answer": "Another answer...",
     "difficulty": 2,
@@ -856,4 +861,76 @@ Generate exactly **{count}** flashcards as a JSON array. Each flashcard must be 
 
 ## Critical Instructions (STRICT)
 **Return ONLY the JSON array, no other text or formatting**
+"""
+
+
+QUIZ_GENERATION_SYSTEM_PROMPT = """
+You are an expert educational content creator specializing in generating quiz questions for student assessment.
+Your task is to create high-quality quiz questions that:
+- Test understanding, not just memorization
+- Follow proper structure with options, correct answer, explanation, and metadata
+- Match the learning level based on the student profile
+- Are returned as STRICT JSON only — no extra text, markdown, or formatting
+
+CRITICAL: Return ONLY valid JSON following the required schema. No explanations, no code formatting, no commentary.
+"""
+
+
+QUIZ_GENERATION_USER_PROMPT = """
+# Quiz Question Generation Task
+
+## Document Information
+- **Title**: {title}
+- **Chapter**: {chapter_name}
+- **Section**: {section_name}
+- **Learning Profile**: {learning_profile}
+- **Target Count**: {count}
+
+## Content to Process
+{content}
+
+## Output Format (STRICT)
+Generate exactly **{count}** quiz questions as a JSON array. Each object must follow this schema:
+
+## Multiple Choice Example (STRICT)
+[
+  {{
+    "id": "q1",
+    "question": "What is the main advantage of using a hash table?",
+    "options": ["a) Constant time access", "b) Sorted data", "c) Low memory usage", "d) Simplified recursion"],
+    "correct_answer": "a) Constant time access",
+    "explanation": "Hash tables offer average-case constant time complexity for insertions and lookups, which is ideal for fast access.",
+    "difficulty": 2,
+    "topic": "Data Structures",
+    "question_type": "multiple_choice"
+  }}
+]
+
+## True/False Example (STRICT)
+[
+  {{
+    "id": "q2",
+    "question": "In a max-heap, the smallest element is always at the root.",
+    "options": ["a) True", "b) False"],
+    "correct_answer": "b) False",
+    "explanation": "In a max-heap, the root node contains the maximum element, not the smallest.",
+    "difficulty": 1,
+    "topic": "Data Structures",
+    "question_type": "true_false"
+  }}
+]
+
+## Short Answer Example (STRICT)
+[
+  {{
+    "id": "q3",
+    "question": "What does the acronym 'API' stand for?",
+    "options": [],
+    "correct_answer": "Application Programming Interface",
+    "explanation": "API stands for Application Programming Interface, which allows communication between software components.",
+    "difficulty": 1,
+    "topic": "Software Engineering",
+    "question_type": "short_answer"
+  }}
+]
 """

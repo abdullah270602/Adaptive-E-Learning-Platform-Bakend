@@ -1,6 +1,8 @@
 import logging
 import json
-from typing import List, Optional
+from typing import List
+from pydantic import ValidationError
+from app.schemas.flashcard import Flashcard
 from app.services.constants import KIMI_K2_INSTRUCT
 from app.services.models import get_client_for_service
 from app.services.prompts import FLASH_CARD_GENERATION_PROMPT, FLASHCARD_SYSTEM_PROMPT
@@ -28,41 +30,17 @@ def clean_response_content(raw_content: str) -> str:
 
 def validate_flashcards(cards: List[dict]) -> List[dict]:
     """
-    Validate flashcard structure and return only valid cards
+    Validate flashcard structure using Pydantic
     """
-    required_fields = {'id', 'question', 'answer', 'difficulty', 'topic'}
     validated_cards = []
-    
-    for i, card in enumerate(cards):
-        if not isinstance(card, dict):
-            logger.warning(f"Card {i} is not a dictionary, skipping")
-            continue
-        
-        missing_fields = required_fields - set(card.keys())
-        if missing_fields:
-            logger.warning(f"Card {i} missing required fields: {missing_fields}")
-            continue
-        
-        # Validate field types
-        if not isinstance(card['question'], str):
-            logger.warning(f"Card {i} 'question' must be string, skipping")
-            continue
-        
-        if not isinstance(card['answer'], str):
-            logger.warning(f"Card {i} 'answer' must be string, skipping")
-            continue
-        
-        if not isinstance(card['difficulty'], int) or not (1 <= card['difficulty'] <= 5):
-            logger.warning(f"Card {i} 'difficulty' must be integer 1-5, skipping")
-            continue
-        
-        if not isinstance(card['topic'], str):
-            logger.warning(f"Card {i} 'topic' must be string, skipping")
-            continue
 
-        
-        validated_cards.append(card)
-    
+    for i, card in enumerate(cards):
+        try:
+            validated = Flashcard(**card)
+            validated_cards.append(validated.model_dump())
+        except ValidationError as e:
+            logger.warning(f"Card {i} failed validation: {e.errors()}")
+
     logger.info(f"Validated {len(validated_cards)} out of {len(cards)} flashcards")
     return validated_cards
 
@@ -113,6 +91,7 @@ async def generate_flashcards(
         
         # Validate and filter cards
         validated_cards = validate_flashcards(cards)
+        
         
         return validated_cards
         

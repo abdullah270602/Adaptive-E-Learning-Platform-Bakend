@@ -34,8 +34,8 @@ async def study_mode_init(document_id: str, document_type: str, current_user: st
             doc = get_cached_doc_metadata(conn, str(document_id), document_type)
             doc.pop("s3_key", None)  # Remove S3 key from the response
             
-            if document_type != "book" and document_type != "presentation":
-                raise HTTPException(status_code=400, detail="Study mode is only supported for books and slides right now.")
+            if document_type != "book" and document_type != "presentation" and document_type != "notes":
+                raise HTTPException(status_code=400, detail="Unsupported document type for study mode")
 
             chat_session = get_or_create_chat_session(conn, current_user, document_id, document_type)
             toc_structure = get_book_structure_query(conn, UUID(document_id))

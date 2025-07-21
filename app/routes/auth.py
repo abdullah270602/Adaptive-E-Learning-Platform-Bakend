@@ -74,7 +74,7 @@ async def auth_callback(request: Request):
             httponly=False,  # True in prod, False in dev
             secure=True,
             samesite="None",
-            domain=".adaptivelearnai.xyz",  # This allows sharing across subdomains
+            domain="localhost" if "localhost" in redirect_origin else ".AdaptiveLearnAI.xyz",  # This allows sharing across subdomains
             max_age=10080, # 7 days
             path="/"
         )
