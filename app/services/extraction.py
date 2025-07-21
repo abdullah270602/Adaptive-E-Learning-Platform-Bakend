@@ -3,6 +3,29 @@ import fitz  # PyMuPDF
 import unicodedata
 import re
 from collections import Counter
+import nltk
+
+def download_nltk_resources():
+    """Download required NLTK resources."""
+    try:
+        # Try to find the resources first
+        nltk.data.find('tokenizers/punkt')
+        nltk.data.find('corpora/stopwords')
+    except LookupError:
+        # Download if not found
+        print("Downloading NLTK resources...")
+        nltk.download('punkt', quiet=True)
+        nltk.download('stopwords', quiet=True)
+        print("NLTK resources downloaded successfully.")
+
+download_nltk_resources()
+
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize, sent_tokenize
+
+
+# Download NLTK resources at module import time
+
 
 # ---------- Preprocessing Helpers ----------
 
@@ -187,6 +210,189 @@ def filter_content_for_mcq(text: str) -> str:
     
     return '\n'.join(filtered_lines)
 
+# ---------- Enhanced Functions for Stopword Removal and Meaningful Content ----------
+
+def download_nltk_resources():
+    """Download required NLTK resources."""
+    try:
+        # Try to find the resources first
+        nltk.data.find('tokenizers/punkt')
+        nltk.data.find('corpora/stopwords')
+    except LookupError:
+        # Download if not found
+        print("Downloading NLTK resources...")
+        nltk.download('punkt', quiet=True)
+        nltk.download('punkt_tab', quiet=True)  # For newer NLTK versions
+        nltk.download('stopwords', quiet=True)
+        print("NLTK resources downloaded successfully.")
+
+def get_extended_stopwords() -> set:
+    """Get comprehensive stopword list using NLTK and additional academic terms."""
+    # NLTK resources are already downloaded at module import
+    
+    # Get NLTK English stopwords
+    nltk_stopwords = set(stopwords.words('english'))
+    
+    # Additional academic and technical stopwords
+    academic_stopwords = {
+        'however', 'therefore', 'furthermore', 'moreover', 'nevertheless',
+        'consequently', 'subsequently', 'accordingly', 'hence', 'thus',
+        'particularly', 'specifically', 'generally', 'typically', 'usually',
+        'often', 'sometimes', 'always', 'never', 'also', 'additionally',
+        'besides', 'likewise', 'similarly', 'conversely', 'instead',
+        'although', 'though', 'whereas', 'since', 'due', 'regarding',
+        'concerning', 'according', 'based', 'given', 'shown', 'described',
+        'presented', 'discussed', 'mentioned', 'noted', 'observed', 'found',
+        'seen', 'used', 'applied', 'following', 'previous', 'next',
+        'various', 'different', 'several', 'many', 'numerous', 'multiple',
+        'certain', 'particular', 'important', 'significant', 'possible',
+        'likely', 'probably', 'perhaps', 'maybe', 'clearly', 'obviously'
+    }
+    
+    return nltk_stopwords | academic_stopwords
+
+def remove_stopwords_from_text(text: str) -> str:
+    """Remove stopwords using NLTK while preserving meaningful content and structure."""
+    # NLTK resources are already downloaded at module import
+    stop_words = get_extended_stopwords()
+    
+    # Split into paragraphs to preserve structure
+    paragraphs = text.split('\n\n')
+    cleaned_paragraphs = []
+    
+    for paragraph in paragraphs:
+        if not paragraph.strip():
+            cleaned_paragraphs.append('')
+            continue
+            
+        # Tokenize into sentences
+        sentences = sent_tokenize(paragraph)
+        cleaned_sentences = []
+        
+        for sentence in sentences:
+            # Tokenize words
+            words = word_tokenize(sentence)
+            
+            # Filter out stopwords and short words
+            meaningful_words = [
+                word for word in words 
+                if word.lower() not in stop_words 
+                and len(word) > 2 
+                and word.isalpha()  # Only alphabetic words
+            ]
+            
+            # Only keep sentences with sufficient meaningful content
+            if len(meaningful_words) >= 3:
+                filtered_sentence = ' '.join(meaningful_words)
+                if filtered_sentence:
+                    cleaned_sentences.append(filtered_sentence)
+        
+        if cleaned_sentences:
+            cleaned_paragraphs.append('. '.join(cleaned_sentences) + '.')
+    
+    return '\n\n'.join(cleaned_paragraphs)
+
+def extract_technical_terms(text: str) -> set:
+    """Extract technical terms and domain-specific vocabulary."""
+    # Patterns for technical terms
+    technical_patterns = [
+        r'\b[A-Z][a-z]+(?:[A-Z][a-z]*)+\b',  # CamelCase terms
+        r'\b[a-z]+(?:-[a-z]+)+\b',           # hyphenated terms
+        r'\b\w*(?:algorithm|method|function|process|system|structure|model|theory|principle)\w*\b',
+        r'\b\w*(?:analysis|synthesis|optimization|implementation|framework|architecture)\w*\b',
+        r'\b[A-Z]{2,}\b',                    # Acronyms
+    ]
+    
+    technical_terms = set()
+    for pattern in technical_patterns:
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        technical_terms.update(matches)
+    
+    return technical_terms
+
+def enhance_meaningful_content(text: str) -> str:
+    """Enhanced content extraction focusing on meaningful academic/technical content."""
+    # NLTK resources are already downloaded at module import
+    
+    # Remove very short paragraphs (likely fragments)
+    paragraphs = text.split('\n\n')
+    meaningful_paragraphs = []
+    
+    for paragraph in paragraphs:
+        paragraph = paragraph.strip()
+        if not paragraph:
+            continue
+            
+        # Skip paragraphs that are too short or have low information density
+        if len(paragraph) < 50:
+            continue
+            
+        # Calculate word density (meaningful words vs total words)
+        words = word_tokenize(paragraph.lower())
+        stop_words = get_extended_stopwords()
+        meaningful_word_count = sum(1 for word in words if word not in stop_words and len(word) > 2)
+        
+        if len(words) > 0 and meaningful_word_count / len(words) > 0.3:  # At least 30% meaningful words
+            meaningful_paragraphs.append(paragraph)
+    
+    return '\n\n'.join(meaningful_paragraphs)
+
+def extract_key_concepts(text: str) -> list:
+    """Extract key concepts and important terms for MCQ generation."""
+    # NLTK resources are already downloaded at module import
+    
+    # Tokenize and clean
+    words = word_tokenize(text.lower())
+    stop_words = get_extended_stopwords()
+    
+    # Filter meaningful words
+    meaningful_words = [
+        word for word in words 
+        if word not in stop_words 
+        and len(word) > 3 
+        and word.isalpha()
+    ]
+    
+    # Count frequency
+    word_freq = Counter(meaningful_words)
+    
+    # Extract technical terms
+    technical_terms = extract_technical_terms(text)
+    
+    # Combine and prioritize
+    key_concepts = []
+    
+    # Add high-frequency meaningful words
+    for word, freq in word_freq.most_common(50):
+        if freq > 2:  # Appears at least 3 times
+            key_concepts.append(word)
+    
+    # Add technical terms
+    key_concepts.extend(list(technical_terms))
+    
+    return list(set(key_concepts))  # Remove duplicates
+
+def preprocess_text_for_vector_store(text: str) -> str:
+    """Specialized preprocessing for vector store with enhanced stopword removal."""
+    # Basic cleaning
+    text = normalize_unicode(text)
+    text = remove_control_characters(text)
+    text = clean_latex_remnants(text)
+    text = fix_common_ocr_errors(text)
+    text = remove_noise_patterns(text)
+    text = clean_table_of_contents(text)
+    text = remove_repeated_lines(text)
+    text = merge_broken_lines(text)
+    
+    # Enhanced processing for vector storage
+    text = enhance_meaningful_content(text)
+    text = remove_stopwords_from_text(text)
+    text = normalize_whitespace(text)
+    
+    return text
+
+# ---------- Original Pipeline Functions ----------
+
 def preprocess_text_for_rag(text: str) -> str:
     """Run full preprocessing pipeline optimized for RAG-based MCQ generation."""
     text = normalize_unicode(text)
@@ -200,6 +406,8 @@ def preprocess_text_for_rag(text: str) -> str:
     text = split_into_semantic_chunks(text)
     text = normalize_whitespace(text)
     text = filter_content_for_mcq(text)
+    text = enhance_meaningful_content(text)  # Enhanced content filtering
+    text = remove_stopwords_from_text(text)  # Remove stopwords using NLTK
     return text
 
 # ---------- Main Extraction Function ----------
