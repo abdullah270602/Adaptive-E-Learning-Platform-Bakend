@@ -44,3 +44,19 @@ def get_cached_doc_metadata(
             logger.error(f"61 Failed to cache metadata for {cache_key}: {e}")
             metadata = get_doc_metadata(conn, document_id, document_type) # DB fall back
     return metadata
+
+
+def delete_cached_doc_metadata(document_id: str, document_type: str) -> bool:
+    """
+    Delete cached metadata for a document from Redis.
+    Returns True if cache deletion was attempted (regardless of whether key existed).
+    """
+    cache_key = f"doc:{document_type}:{document_id}:metadata"
+    
+    try:
+        redis_client.delete(cache_key)
+        return True
+        
+    except Exception as e:
+        logger.warning(f"Failed to delete cache for {cache_key}: {e}")
+        return False

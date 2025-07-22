@@ -165,3 +165,44 @@ def get_tool_response_by_id(conn: PGConnection, id: UUID) -> dict:
         )
         row = cursor.fetchone()
         return dict(row) if row else {}
+
+
+def delete_all_document_data(conn: PGConnection, document_id: str, user_id: str, document_type: str) -> dict:
+    """
+    Comprehensive deletion using CASCADE - one delete triggers everything.
+    """
+    deletion_stats = {
+        "document_progress_deleted": 0,
+        "chat_sessions_deleted": 0,
+        "chat_messages_deleted": "CASCADE",
+        "tool_responses_deleted": "CASCADE"
+    }
+    
+    with conn.cursor(cursor_factory=DictCursor) as cursor:
+        try:
+            # Delete chat session (CASCADE will handle messages + tool responses)
+            cursor.execute(
+                """
+                DELETE FROM chat_sessions
+                WHERE user_id = %s AND document_id = %s AND document_type = %s
+                """,
+                (user_id, document_id, document_type)
+            )
+            deletion_stats["chat_sessions_deleted"] = cursor.rowcount
+            
+            # Delete document progress
+            cursor.execute(
+                """
+                DELETE FROM document_progress
+                WHERE user_id = %s AND document_id = %s AND document_type = %s
+                """,
+                (user_id, document_id, document_type)
+            )
+            deletion_stats["document_progress_deleted"] = cursor.rowcount
+            
+            conn.commit()
+            return deletion_stats
+            
+        except Exception as e:
+            conn.rollback()
+            raise Exception(f"Failed to delete document data: {str(e)}")

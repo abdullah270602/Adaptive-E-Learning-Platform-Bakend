@@ -57,11 +57,14 @@ class RedisClient:
             logger.error(f" Failed to retrieve key {key}: {e}")
             return None
 
-    def delete(self, key: str) -> None:
+    def delete(self, key: str) -> int:
         try:
-            self.client.delete(key)
+            result = self.client.delete(key)
+            logger.info(f"Deleted cache key {key}, existed: {result > 0}")
+            return result
         except Exception as e:
-            logger.warning(f" Failed to delete cache key {key}: {e}")
+            logger.warning(f"Failed to delete cache key {key}: {e}")
+            return 0
 
     def exists(self, key: str) -> bool:
         try:
