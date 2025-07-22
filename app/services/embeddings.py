@@ -3,19 +3,23 @@ import httpx
 import os
 import asyncio
 from typing import List, Dict
+from app.services.constants import HUGGINGFACE_API_URL
+from app.services.models import get_next_api_key
 
 
 logger = logging.getLogger(__name__)
 
-HUGGINGFACE_API_URL = "https://router.huggingface.co/hf-inference/models/sentence-transformers/all-MiniLM-L6-v2/pipeline/feature-extraction"
 
-HF_TOKEN = os.getenv("HF_TOKEN")
-logger.info(f"Using Hugging Face token: {HF_TOKEN}")
-
-HEADERS = {
-    "Authorization": f"Bearer {HF_TOKEN}",
-    "Content-Type": "application/json"
-}
+def get_huggingface_headers():
+    """ Get the headers for the Hugging Face API. """ 
+    
+    HUGGINGFACE_API_KEY = get_next_api_key("huggingface")
+    return {
+        "Authorization": f"Bearer {HUGGINGFACE_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    
+    
 
 def preprocess_chunk(chunk: str, max_length: int = 512) -> str:
     """Truncate chunk to model token limits if needed"""
@@ -36,13 +40,13 @@ def preprocess_chunk(chunk: str, max_length: int = 512) -> str:
 async def embed_single_chunk(client: httpx.AsyncClient, chunk: str, max_retries: int = 3) -> List[float]:
     """Embed a single chunk with retry logic and preprocessing"""
     processed_chunk = preprocess_chunk(chunk)
-    
+    headers = get_huggingface_headers()
     for attempt in range(max_retries):
         try:
             response = await client.post(
                 HUGGINGFACE_API_URL,
                 json={"inputs": processed_chunk},
-                headers=HEADERS,
+                headers=headers,
                 timeout=60
             )
             response.raise_for_status()

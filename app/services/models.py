@@ -11,24 +11,42 @@ from app.services.constants import SERVICE_CONFIG
 logger = logging.getLogger(__name__)
 
 # State for rotation
-_groq_key_cycle = None
-_groq_key_lock = Lock()
+_api_key_cycles = {}
+_api_key_locks = {}
 
-def _init_groq_key_cycle_from_env():
-    """Initialize the cycle from env variables like GROQ_API_KEY, GROQ_API_KEY_2, etc."""
+
+def _init_api_key_cycle(service_prefix: str):
+    """Initialize the cycle from env variables like PREFIX_API_KEY, PREFIX_API_KEY_2, etc."""
     
-    prefix = "GROQ_API_KEY"
+    prefix = f"{service_prefix}_API_KEY"
     keys = []
 
     for k, v in os.environ.items():
         if k.startswith(prefix) and v.strip():
-            logger.info(f"Found GROQ API key in environment variable: {k}")
+            logger.info(f"Found API key for {service_prefix}: {k}")
             keys.append(v.strip())
 
     if not keys:
-        raise ValueError("No GROQ API keys found in environment.")
+        logger.error(f"No API keys found for prefix: {prefix}")
+        raise ValueError(f"No {service_prefix} API keys found in environment.")
 
     return cycle(keys)
+
+
+def get_next_api_key(service: str):
+    """Get next API key from the rotation for the specified service."""
+    service_prefix = service.upper()
+    
+    if service_prefix not in _api_key_locks:
+        _api_key_locks[service_prefix] = Lock()
+    
+    # Ensure thread-safe access to the cycle
+    with _api_key_locks[service_prefix]:
+        
+        # Initialize the cycle if not already initialized
+        if service_prefix not in _api_key_cycles:
+            _api_key_cycles[service_prefix] = _init_api_key_cycle(service_prefix)
+        return next(_api_key_cycles[service_prefix])
 
 
 def get_client_for_service(service: str = "groq") -> OpenAI:
@@ -36,14 +54,9 @@ def get_client_for_service(service: str = "groq") -> OpenAI:
         config = SERVICE_CONFIG[service.lower()]
         base_url = config["base_url"]
         
-        if service.lower() == "groq":
-            global _groq_key_cycle
-            with _groq_key_lock:
-                if not _groq_key_cycle:
-                    _groq_key_cycle = _init_groq_key_cycle_from_env()
-                api_key = next(_groq_key_cycle)
-                logger.info(f"Using GROQ API key: {api_key} (from cycle)")
-                
+        if config.get("use_key_rotation", False):
+            api_key = get_next_api_key(service)
+            logger.info(f"Using {service.upper()} API key: {api_key} (from cycle)")
         else:
             api_key = os.getenv(config["api_key_env_var"])
 
@@ -70,7 +83,6 @@ def get_client_for_service(service: str = "groq") -> OpenAI:
             f"Error creating client for service '{service}': {e}", exc_info=True
         )
         raise
-
 
 def get_reply_from_model(model_id: str, chat: list[str]) -> str:
     """
