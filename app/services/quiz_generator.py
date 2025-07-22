@@ -3,8 +3,8 @@ import json
 from typing import List
 from pydantic import ValidationError
 from app.schemas.quiz import QuizQuestion
-from app.services.constants import KIMI_K2_INSTRUCT
-from app.services.models import get_client_for_service
+from app.services.constants import KIMI_K2_INSTRUCT_ID
+from app.services.models import get_reply_from_model
 from app.services.prompts import QUIZ_GENERATION_SYSTEM_PROMPT, QUIZ_GENERATION_USER_PROMPT
 
 logger = logging.getLogger(__name__)
@@ -45,34 +45,31 @@ async def generate_quiz_questions(
     chapter_name: str,
     section_name: str,
     learning_profile: str,
-    count: int = 5
+    count: int = 5,
+    model_id: str = KIMI_K2_INSTRUCT_ID
 ) -> List[dict]:
     """
     Generate quiz questions from the given content
     """
-    prompt = QUIZ_GENERATION_USER_PROMPT.format(
+    user_prompt = QUIZ_GENERATION_USER_PROMPT.format(
         title=title or "",
         chapter_name=chapter_name or "",
         section_name=section_name or "",
         learning_profile=learning_profile or "",
         count=count,
-        content=content
+        content=content,
     )
 
-    client = get_client_for_service("groq")
-
     try:
-        response = client.chat.completions.create(
-            model=KIMI_K2_INSTRUCT,
-            messages=[
+        raw_response = get_reply_from_model(
+            model_id=model_id,
+            chat=[
                 {"role": "system", "content": QUIZ_GENERATION_SYSTEM_PROMPT},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.6
+                {"role": "user", "content": user_prompt}
+            ]
         )
 
-        raw_content = response.choices[0].message.content
-        cleaned_content = clean_response_content(raw_content)
+        cleaned_content = clean_response_content(raw_response)
 
         questions = json.loads(cleaned_content)
 
@@ -81,11 +78,12 @@ async def generate_quiz_questions(
             return []
 
         validated_questions = validate_quiz_questions(questions)
+        print("🐍 File: services/quiz_generator.py | Line: 82 | undefined ~ validated_questions",validated_questions)
         return validated_questions
 
     except json.JSONDecodeError as e:
         logger.error(f"Failed to parse JSON response: {e}")
-        logger.error(f"Raw response: {raw_content}")
+        logger.error(f"Raw response: {raw_response}")
         return []
     except Exception as e:
         logger.error(f"Error generating quiz questions: {e}")

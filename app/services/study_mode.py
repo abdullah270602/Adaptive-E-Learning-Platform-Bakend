@@ -9,6 +9,7 @@ from app.cache.metadata import get_cached_doc_metadata
 from app.database.connection import PostgresConnection
 from app.database.study_mode_queries import get_last_chat_messages, insert_chat_messages, insert_tool_response
 from app.schemas.chat import ChatMessageCreate
+from app.services.constants import KIMI_K2_INSTRUCT_ID
 from app.services.diagram_generator import generate_diagrams
 from app.services.flashcard_generator import generate_flashcards
 from app.services.game_generator import generate_game_stub
@@ -34,8 +35,8 @@ LEARNING_TOOLS_WITH_PARAMS = {
     "flashcard": lambda content, title, chapter_name, section_name, learning_profile, count=5: generate_flashcards(
         content, title, chapter_name, section_name, learning_profile, count
     ),
-    "quiz": lambda content, title, chapter_name, section_name, learning_profile, count=5: generate_quiz_questions(
-        content, title, chapter_name, section_name, learning_profile, count
+    "quiz": lambda content, title, chapter_name, section_name, learning_profile, count=5, model_id=KIMI_K2_INSTRUCT_ID: generate_quiz_questions(
+        content, title, chapter_name, section_name, learning_profile, count, model_id
     ),
 }
 
@@ -259,6 +260,11 @@ async def handle_chat_message(payload: ChatMessageCreate, user_id: UUID) -> str:
 
                 try:
                     tool_raw_result = await run_tool(detected_tool["tool_name"], context_for_tool)
+                    print("🐍 File: services/study_mode.py | Line: 263 | undefined ~ tool_raw_result",tool_raw_result)
+                    
+                    if tool_raw_result is None:
+                        logger.error(f"Tool '{detected_tool['tool_name']}' returned None")
+                        detected_tool["tool_name"] = None
 
                     # final response dict
                     final_response = {
