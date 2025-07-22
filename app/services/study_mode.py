@@ -260,7 +260,6 @@ async def handle_chat_message(payload: ChatMessageCreate, user_id: UUID) -> str:
 
                 try:
                     tool_raw_result = await run_tool(detected_tool["tool_name"], context_for_tool)
-                    print("🐍 File: services/study_mode.py | Line: 263 | undefined ~ tool_raw_result",tool_raw_result)
                     
                     if tool_raw_result is None:
                         logger.error(f"Tool '{detected_tool['tool_name']}' returned None")

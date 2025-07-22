@@ -78,7 +78,6 @@ async def generate_quiz_questions(
             return []
 
         validated_questions = validate_quiz_questions(questions)
-        print("🐍 File: services/quiz_generator.py | Line: 82 | undefined ~ validated_questions",validated_questions)
         return validated_questions
 
     except json.JSONDecodeError as e:
