@@ -75,6 +75,18 @@ def get_client_for_service(service: str = "groq") -> OpenAI:
 def get_reply_from_model(model_id: str, chat: list[str]) -> str:
     """
     Main entrypoint to retrieve a reply from the specified model.
+
+    Args:
+        model_id (str): The ID of the model to use.
+        chat (list[str]): The chat history to use.
+        Example :
+            [
+                {"role": "system", "content": full_system_prompt},
+                {"role": "user", "content": user_message},
+            ]
+        
+    Returns:
+        str: The raw reply from the model.
     """
     try:
         with PostgresConnection() as conn:
