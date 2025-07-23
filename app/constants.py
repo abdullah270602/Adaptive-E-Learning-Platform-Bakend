@@ -4,4 +4,5 @@ ALLOWED_ORIGINS = [
     "https://adaptivelearnai.xyz",
     "https://www.adaptivelearnai.xyz",
     "https://fyp-frontend-chi-blush.vercel.app",
+    "https://adaptive-learn-ai-test.vercel.app",
 ]
