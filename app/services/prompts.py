@@ -952,3 +952,112 @@ Guidelines:
 
 This query will be embedded and used to retrieve relevant documents. Ensure it is complete and unambiguous.
 """
+
+MCQ_GEN_SYSTEM_PROMPT = """
+You are an expert educational content creator specializing in generating quiz questions for student assessment.
+Your task is to create high-quality quiz questions that:
+- Test understanding, not just memorization
+- Follow proper structure with options, correct answer{EXPLANATION_INSTRUCTION}, and metadata
+- Match the {DIFFICULTY_LEVEL} difficulty level
+- Are returned as STRICT JSON only — no extra text, markdown, or formatting
+
+CRITICAL: Return ONLY valid JSON following the required schema. No explanations, no code formatting, no commentary.
+
+{DIFFICULTY_SPECIFIC_INSTRUCTIONS}
+"""
+
+MCQ_GEN_USER_PROMPT = """
+# Quiz Question Generation Task
+
+## Generation Parameters
+- **Topic**: {TOPIC}
+- **Difficulty Level**: {DIFFICULTY_LEVEL}
+- **Target Count**: {K}
+
+## Content to Process
+{CONTENT}
+
+## Output Format (STRICT)
+Generate exactly **{K}** quiz questions as a JSON array. Each object must follow this schema:
+
+## Multiple Choice Example (STRICT)
+[
+ {{
+   "id": "q1",
+   "question": "What is the main advantage of using a hash table?",
+   "options": ["a) Constant time access", "b) Sorted data", "c) Low memory usage", "d) Simplified recursion"],
+   "correct_answer": "a) Constant time access",{EXPLANATION_FIELD}
+   "difficulty": {DIFFICULTY_NUMBER},
+   "topic": "{TOPIC}",
+   "question_type": "multiple_choice"
+ }}
+]
+
+Return ONLY the JSON array with {K} questions. No additional text or formatting.
+"""
+
+EASY_DIFFICULTY_INSTRUCTIONS = """EASY DIFFICULTY GUIDELINES (difficulty: 1):
+- Focus on basic concepts, definitions, and fundamental principles
+- Use straightforward language and familiar terminology  
+- Questions should test recall and basic understanding
+- Avoid complex scenarios or multi-step reasoning
+- Include direct fact-based questions
+- Make incorrect options clearly distinguishable from the correct answer{EXPLANATION_DIFFICULTY_NOTE}
+- Difficulty number in JSON should be 1"""
+
+MEDIUM_DIFFICULTY_INSTRUCTIONS = """MEDIUM DIFFICULTY GUIDELINES (difficulty: 2):
+- Focus on application of concepts and analytical thinking
+- Include scenario-based questions that require understanding relationships
+- Test comprehension and ability to apply knowledge to new situations
+- Use moderate complexity in language and concepts
+- Include some questions requiring comparison or classification
+- Make distractors more plausible but still clearly incorrect{EXPLANATION_DIFFICULTY_NOTE}
+- Difficulty number in JSON should be 2"""
+
+HARD_DIFFICULTY_INSTRUCTIONS = """HARD DIFFICULTY GUIDELINES (difficulty: 3):
+- Focus on synthesis, evaluation, and complex problem-solving
+- Include multi-layered questions requiring deep understanding
+- Test critical thinking and ability to analyze complex scenarios
+- Use advanced terminology and sophisticated concepts
+- Include questions requiring students to evaluate, predict, or justify
+- Make distractors very plausible, requiring careful consideration
+- Include questions that test edge cases or exceptions to rules{EXPLANATION_DIFFICULTY_NOTE}
+- Difficulty number in JSON should be 3"""
+
+MIXED_DIFFICULTY_INSTRUCTIONS = """MIXED DIFFICULTY GUIDELINES:
+- Create a balanced distribution: 30% easy (difficulty: 1), 40% medium (difficulty: 2), 30% hard (difficulty: 3)
+- Vary the difficulty number in JSON based on question complexity
+- Easy questions: Test basic recall and definitions
+- Medium questions: Test application and analysis  
+- Hard questions: Test synthesis and evaluation
+- Ensure variety in question types and cognitive levels{EXPLANATION_DIFFICULTY_NOTE}"""
+
+# Difficulty level to number mapping
+DIFFICULTY_MAPPING = {
+   "easy": 1,
+   "medium": 2,
+   "hard": 3,
+   "mixed": "varies"
+}
+
+# Difficulty level to instructions mapping
+INSTRUCTION_MAPPING = {
+   "easy": EASY_DIFFICULTY_INSTRUCTIONS,
+   "medium": MEDIUM_DIFFICULTY_INSTRUCTIONS,
+   "hard": HARD_DIFFICULTY_INSTRUCTIONS,
+   "mixed": MIXED_DIFFICULTY_INSTRUCTIONS
+}
+
+# Explanation toggle configurations
+EXPLANATION_CONFIGS = {
+   "with_explanations": {
+       "EXPLANATION_INSTRUCTION": ", explanation",
+       "EXPLANATION_FIELD": '\n    "explanation": "{EXPLANATION_TEXT}",',
+       "EXPLANATION_DIFFICULTY_NOTE": "\n- Provide clear, educational explanations for correct answers"
+   },
+   "without_explanations": {
+       "EXPLANATION_INSTRUCTION": "",
+       "EXPLANATION_FIELD": "",
+       "EXPLANATION_DIFFICULTY_NOTE": ""
+   }
+}

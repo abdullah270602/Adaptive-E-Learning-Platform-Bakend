@@ -23,6 +23,7 @@ from app.services.notes_upload import process_uploaded_notes
 from app.services.presentation_upload import process_uploaded_slides
 from app.services.mcq_main import process_mcq_document
 from app.services.query_processing import expand_user_query_and_search
+from app.services.mcq_generator import generate_mcq_questions
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/file", tags=["Files"])
@@ -189,7 +190,10 @@ router = APIRouter()
 @router.post("/generate-mcqs", status_code=status.HTTP_200_OK)
 async def generate_mcqs(
     user_query: str = Form(...),
-    #num_mcqs: int = Form(...),
+    difficulty_level: str = Form(...),
+    num_mcqs: int = Form(...),
+    explanation: bool = Form(...),
+    topic: str = Form(...),
     current_user: str = Depends(get_current_user),
 ):
     try:
@@ -207,9 +211,24 @@ async def generate_mcqs(
         if results is None:
             return {"status": "error", "message": "Failed to retrieve relevant content."}
 
+        # Extract chunk texts from results
+        chunk_texts = [chunk["text"] for chunk in results]
+        combined_content = "\n\n".join(chunk_texts)
+
+        # Generate MCQs using the retrieved content
+        mcq_questions = await generate_mcq_questions(
+            content=combined_content,
+            difficulty_level=difficulty_level,
+            num_mcqs=num_mcqs,
+            explanation=explanation,
+            topic=topic,
+            model_id="d50a33ce-2462-4a5a-9aa7-efc2d1749745"  # Replace with real model_id
+        )
+
         return {
             "status": "success",
-            "matching_chunks": results
+            "matching_chunks": results,
+            "generated_mcqs": mcq_questions
         }
 
     except Exception as e:
