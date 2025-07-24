@@ -3,6 +3,7 @@ import logging
 import os
 import traceback
 import platform
+from typing import Optional
 import uuid
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status
 from app.auth.dependencies import get_current_user
@@ -21,7 +22,7 @@ from app.services.delete import delete_document_and_assets
 from app.services.notes_upload import process_uploaded_notes
 from app.services.presentation_upload import process_uploaded_slides
 from app.services.mcq_main import process_mcq_document
-
+from app.services.query_processing import expand_user_query_and_search
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/file", tags=["Files"])
@@ -105,11 +106,16 @@ async def upload_file(
         logger.error(f"[Upload] Failed to upload: {str(e)}")
         raise HTTPException(status_code=500, detail="Upload failed.")
 
-    
 
-    
+from fastapi import APIRouter, Depends, status, Form
+from pydantic import BaseModel
+from app.auth.dependencies import get_current_user
+
+router = APIRouter()
 
 
+
+        
 @router.get("/books")
 async def list_user_books(
     current_user: str = Depends(get_current_user),
@@ -176,3 +182,38 @@ def list_user_notes(current_user: str = Depends(get_current_user)):
     except Exception as e:
         logging.error(f"[List Notes] Failed to fetch notes: {e}")
         raise HTTPException(status_code=500, detail="Failed to retrieve notes.")
+    
+
+router = APIRouter()
+
+@router.post("/generate-mcqs", status_code=status.HTTP_200_OK)
+async def generate_mcqs(
+    user_query: str = Form(...),
+    #num_mcqs: int = Form(...),
+    current_user: str = Depends(get_current_user),
+):
+    try:
+        # Call your wrapped function that handles:
+        # 1. Expansion
+        # 2. Embedding
+        # 3. Vector DB Search
+        results: Optional[list[dict]] = await expand_user_query_and_search(
+            user_query=user_query,
+            user_id=current_user,
+            model_id="d50a33ce-2462-4a5a-9aa7-efc2d1749745",  # Replace with real model_id
+            top_k=5 # or whatever suits
+        )
+
+        if results is None:
+            return {"status": "error", "message": "Failed to retrieve relevant content."}
+
+        return {
+            "status": "success",
+            "matching_chunks": results
+        }
+
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e)
+        }
