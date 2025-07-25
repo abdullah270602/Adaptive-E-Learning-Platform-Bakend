@@ -5,23 +5,17 @@ import traceback
 import platform
 from typing import Optional
 import uuid
-from fastapi.responses import StreamingResponse
-import io
-import json
+from uuid import UUID
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status
 from app.auth.dependencies import get_current_user
-from app.database.book_queries import (
-    get_book_structure_query,
-    get_books_by_user,
-    get_section_content_query,
-)
+from app.database.book_queries import get_books_by_user
 from app.database.connection import PostgresConnection
 from app.database.notes_queries import get_notes_by_user
 from app.database.slides_queries import get_slides_by_user
 from app.routes.constants import NOTE_EXTENSIONS
 from app.services.book_processor import parse_toc_pages
 from app.services.book_upload import process_uploaded_book
-from app.services.delete import delete_document_and_assets
+from app.services.delete_file import delete_document_and_assets
 from app.services.notes_upload import process_uploaded_notes
 from app.services.presentation_upload import process_uploaded_slides
 from app.services.mcq_main import process_mcq_document
@@ -111,7 +105,11 @@ async def upload_file(
         logger.error(f"[Upload] Failed to upload: {str(e)}")
         raise HTTPException(status_code=500, detail="Upload failed.")
 
-       
+    
+
+    
+
+
 @router.get("/books")
 async def list_user_books(
     current_user: str = Depends(get_current_user),
@@ -146,8 +144,8 @@ async def list_user_slides(current_user: str = Depends(get_current_user)):
 
 @router.delete("/delete/{document_type}/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_file(
-    document_type: str,
-    document_id: str,
+    document_type: DocumentType,
+    document_id: UUID,
     current_user: str = Depends(get_current_user),
 ):
     """
@@ -156,13 +154,16 @@ def delete_file(
     try:
         deleted = delete_document_and_assets(
             document_type=document_type.lower(),
-            document_id=document_id,
+            document_id=str(document_id),
             user_id=current_user,
         )
         if not deleted:
             raise HTTPException(status_code=404, detail=f"{document_type.capitalize()} not found or not owned by user")
 
         return {"message": f"{document_type.capitalize()} deleted successfully"}
+    
+    except HTTPException as http_e:
+        raise http_e
 
     except Exception as e:
         logging.error(f"[Delete] Failed to delete {document_type}: {e}")

@@ -74,8 +74,8 @@ async def auth_callback(request: Request):
             httponly=False,  # True in prod, False in dev
             secure=True,
             samesite="None",
-            domain="localhost" if "localhost" in redirect_origin else ".AdaptiveLearnAI.xyz",  # This allows sharing across subdomains
-            max_age=10080, # 7 days
+            domain=".AdaptiveLearnAI.xyz",  # This allows sharing across subdomains
+            max_age= 60 * 60 * 24 * 7,  # 604800 seconds = 7 days
             path="/"
         )
         logger.info("Setting cookie and redirecting to frontend")

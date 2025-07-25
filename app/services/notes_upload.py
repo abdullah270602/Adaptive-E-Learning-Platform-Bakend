@@ -36,7 +36,7 @@ async def process_uploaded_notes(tmp_path: str, original_filename: str, user_id:
             "book_metadata": None,
             "presentation_metadata": None,
             "note_metadata": {
-                "type": "note",
+                "type": "notes",
                 "note_id": note_id,
                 "title": original_filename
             }
