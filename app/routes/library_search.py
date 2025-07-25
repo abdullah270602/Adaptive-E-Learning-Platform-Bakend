@@ -94,3 +94,26 @@ async def library_search_health():
             "status": "unhealthy",
             "error": str(e)
         }
+
+
+@router.delete("/clear/collection")
+async def clear_collection(current_user: str = Depends(get_current_user)):
+    """
+    Clear the user's vector collection
+    """
+    from app.services.vector_storage import empty_collection
+    
+    try:
+        result = empty_collection(current_user)
+        if result is None:
+            raise HTTPException(status_code=500, detail="Failed to clear collection")
+        
+        return {
+            "status": "success",
+            "message": result.get("message", "Collection cleared successfully"),
+            "collection_name": result.get("collection_name")
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to clear collection for user {current_user}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to clear collection")
