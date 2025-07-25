@@ -11,6 +11,110 @@ import json
 
 logger = logging.getLogger(__name__)
 
+async def multi_strategy_search(query: str, user_id: str, max_chunks: int) -> List[Dict]:
+    """
+    Use multiple search strategies to find diverse results across different documents
+    """
+    try:
+        all_chunks = []
+        chunk_ids_seen = set()
+        
+        # Full query search
+        logger.info("Strategy 1: Full query search")
+        full_query_embedding = await embed_single_text(query)
+        if full_query_embedding:
+            chunks1 = await search_similar_chunks(
+                embedded_query=full_query_embedding,
+                user_id=user_id,
+                top_k=max_chunks
+            )
+            for chunk in chunks1:
+                chunk_id = f"{chunk.get('doc_id')}_{chunk.get('chunk_index')}"
+                if chunk_id not in chunk_ids_seen:
+                    chunk_ids_seen.add(chunk_id)
+                    all_chunks.append(chunk)
+        
+        # Split query by "and" and search separately
+        if " and " in query.lower():
+            logger.info("Strategy 2: Split query by 'and'")
+            sub_queries = [q.strip() for q in query.lower().split(" and ") if q.strip()]
+            
+            for i, sub_query in enumerate(sub_queries[:2]):  # Limit to 2 sub-queries
+                logger.info(f"Sub-query {i+1}: '{sub_query}'")
+                sub_embedding = await embed_single_text(sub_query)
+                if sub_embedding:
+                    sub_chunks = await search_similar_chunks(
+                        embedded_query=sub_embedding,
+                        user_id=user_id,
+                        top_k=max_chunks // 2  # Fewer per sub-query
+                    )
+                    for chunk in sub_chunks:
+                        chunk_id = f"{chunk.get('doc_id')}_{chunk.get('chunk_index')}"
+                        if chunk_id not in chunk_ids_seen:
+                            chunk_ids_seen.add(chunk_id)
+                            # Add sub-query info for debugging
+                            chunk['sub_query'] = sub_query
+                            all_chunks.append(chunk)
+        
+        # Extract key terms and search
+        key_terms = extract_key_terms(query)
+        if key_terms:
+            logger.info(f"Strategy 3: Key terms search: {key_terms}")
+            for term in key_terms[:3]:  # Top 3 key terms
+                term_embedding = await embed_single_text(term)
+                if term_embedding:
+                    term_chunks = await search_similar_chunks(
+                        embedded_query=term_embedding,
+                        user_id=user_id,
+                        top_k=5  # Fewer per term
+                    )
+                    for chunk in term_chunks:
+                        chunk_id = f"{chunk.get('doc_id')}_{chunk.get('chunk_index')}"
+                        if chunk_id not in chunk_ids_seen:
+                            chunk_ids_seen.add(chunk_id)
+                            chunk['key_term'] = term
+                            all_chunks.append(chunk)
+        
+        # Sort by score and limit total results
+        all_chunks.sort(key=lambda x: x.get('score', 0), reverse=True)
+        limited_chunks = all_chunks[:max_chunks * 2]  # Allow more for diversity
+        
+        logger.info(f"Multi-strategy found {len(limited_chunks)} unique chunks from {len(set(c.get('doc_id') for c in limited_chunks))} documents")
+        return limited_chunks
+        
+    except Exception as e:
+        logger.error(f"Multi-strategy search failed: {e}")
+        # Fallback to simple search
+        query_embedding = await embed_single_text(query)
+        if query_embedding:
+            return await search_similar_chunks(
+                embedded_query=query_embedding,
+                user_id=user_id,
+                top_k=max_chunks
+            )
+        return []
+
+
+def extract_key_terms(query: str) -> List[str]:
+    """
+    Extract key terms from a query for diversified search
+    """
+    # Simple key term extraction
+    import re
+    
+    # Remove common words
+    stop_words = {'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'as', 'is', 'are', 'was', 'were', 'be', 'been', 'being'}
+    
+    # Split by common separators
+    terms = re.split(r'[,\s\-_]+', query.lower())
+    
+    # Filter out stop words and short terms
+    key_terms = [term.strip() for term in terms 
+                 if term.strip() and len(term.strip()) > 2 and term.strip() not in stop_words]
+    
+    return key_terms[:5]  # Return top 5 key terms
+
+
 async def perform_library_search(
     query: str,
     user_id: str,
@@ -22,31 +126,25 @@ async def perform_library_search(
     Perform RAG search across user's library
     """
     try:
-        # Step 1: Embed the query
+        # Enhanced query processing for better coverage
         logger.info(f"Starting library search for user {user_id}: '{query}'")
         
-        query_embedding = await embed_single_text(query)
-        if not query_embedding:
-            raise ValueError("Failed to generate query embedding")
+        # Try multiple search strategies for better document coverage
+        all_chunks = await multi_strategy_search(query, user_id, max_chunks)
         
-        # Step 2: Search similar chunks
-        similar_chunks = await search_similar_chunks(
-            embedded_query=query_embedding,
-            user_id=user_id,
-            top_k=max_chunks
-        )
-        
-        # Debug: Log chunks before filtering
-        logger.info(f"Vector search found {len(similar_chunks)} chunks")
-        if similar_chunks:
-            scores = [chunk.get("score", 0) for chunk in similar_chunks]
+        # Log chunks before filtering
+        logger.info(f"Multi-strategy search found {len(all_chunks)} chunks")
+        if all_chunks:
+            scores = [chunk.get("score", 0) for chunk in all_chunks]
             logger.info(f"Score range: min={min(scores):.3f}, max={max(scores):.3f}, avg={sum(scores)/len(scores):.3f}")
         
         # Filter by score if needed
         if min_score > 0:
-            before_filter = len(similar_chunks)
-            similar_chunks = [chunk for chunk in similar_chunks if chunk.get("score", 0) >= min_score]
+            before_filter = len(all_chunks)
+            similar_chunks = [chunk for chunk in all_chunks if chunk.get("score", 0) >= min_score]
             logger.info(f"Score filter (>={min_score}): {before_filter} -> {len(similar_chunks)} chunks")
+        else:
+            similar_chunks = all_chunks
         
         if not similar_chunks:
             return {
@@ -55,7 +153,9 @@ async def perform_library_search(
                 "references": []
             }
         
-        # Step 3: Filter by document types if specified
+        # Ensure document diversity and filter by types
+        similar_chunks = ensure_document_diversity(similar_chunks, max_per_doc=4)
+        
         if document_types:
             similar_chunks = filter_chunks_by_type(similar_chunks, document_types)
         
@@ -66,7 +166,7 @@ async def perform_library_search(
                 "references": []
             }
         
-        # Step 4: Get document metadata using your efficient caching
+        # Get document metadata using your efficient caching
         doc_ids = list(set(chunk["doc_id"] for chunk in similar_chunks if chunk["doc_id"]))
         
         # Debug logging
@@ -79,10 +179,10 @@ async def perform_library_search(
         
         logger.info(f"Retrieved metadata for {len(documents_metadata)} documents: {list(documents_metadata.keys())}")
         
-        # Step 5: Generate AI response
+        # Generate AI response
         answer = await generate_rag_answer(query, similar_chunks, documents_metadata)
         
-        # Step 6: Format response
+        # Format response
         return format_search_response(answer, similar_chunks, documents_metadata)
         
     except Exception as e:
@@ -98,6 +198,33 @@ def filter_chunks_by_type(chunks: List[Dict], document_types: List[str]) -> List
     # This would need document type info in chunk metadata
     # For now, return all chunks - we'll filter at document level
     return chunks
+
+def ensure_document_diversity(chunks: List[Dict], max_per_doc: int = 3) -> List[Dict]:
+    """
+    Ensure we don't get too many chunks from the same document
+    """
+    doc_chunk_count = {}
+    diverse_chunks = []
+    
+    for chunk in chunks:
+        doc_id = chunk.get('doc_id')
+        if not doc_id:
+            continue
+            
+        # Count chunks per document
+        if doc_id not in doc_chunk_count:
+            doc_chunk_count[doc_id] = 0
+        
+        # Only add if we haven't hit the limit for this document
+        if doc_chunk_count[doc_id] < max_per_doc:
+            diverse_chunks.append(chunk)
+            doc_chunk_count[doc_id] += 1
+    
+    logger.info(f"Document diversity: {len(diverse_chunks)} chunks from {len(doc_chunk_count)} documents")
+    for doc_id, count in doc_chunk_count.items():
+        logger.info(f"  Document {doc_id[:8]}...: {count} chunks")
+    
+    return diverse_chunks
 
 async def generate_rag_answer(query: str, chunks: List[Dict], documents_metadata: Dict) -> str:
     """Generate AI answer using retrieved chunks"""
@@ -142,8 +269,8 @@ async def generate_rag_answer(query: str, chunks: List[Dict], documents_metadata
                 {"role": "system", "content": RAG_SYSTEM_PROMPT},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.2,  # Lower temperature for more focused responses
-            max_tokens=200    # Much lower token limit for concise answers
+            temperature=0.3,  # Slightly higher for more creative synthesis
+            max_tokens=400    # Increased for more comprehensive answers
         )
         
         return response.choices[0].message.content.strip()
