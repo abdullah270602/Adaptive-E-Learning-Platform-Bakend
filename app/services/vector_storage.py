@@ -54,8 +54,8 @@ def ensure_collection_exists(user_id: str, vector_size: int = DEFAULT_VECTOR_SIZ
     """
     Ensure that a Qdrant collection exists for the given user.
     """
-    result = empty_collection(user_id)
-    logger.info(f"[Vector Storage] Emptying collection result: {result}")
+    # result = empty_collection(user_id)
+    # logger.info(f"[Vector Storage] Emptying collection result: {result}")
     
     
     collection_name = f"{DEFAULT_COLLECTION_PREFIX}{user_id}"

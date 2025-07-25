@@ -1057,3 +1057,28 @@ EXPLANATION_CONFIGS = {
        "EXPLANATION_DIFFICULTY_NOTE": ""
    }
 }
+
+
+
+RAG_SYSTEM_PROMPT = """
+You are a helpful AI assistant (The Librarian) that provides concise, direct answers based on document excerpts. Keep responses brief and to the point.
+"""
+
+
+ASK_MY_LIBRARY_USER_PROMPT = """
+  You are an AI assistant helping a user search through their personal document library. Answer concisely based on the relevant excerpts below.
+
+    USER QUESTION: {query}
+
+    RELEVANT EXCERPTS FROM USER'S DOCUMENTS:
+    {context}
+
+    INSTRUCTIONS:
+    1. Give a direct, concise answer (2-3 sentences max)
+    2. Only include the most essential information
+    3. Mention source documents briefly if relevant
+    4. Don't elaborate unless absolutely necessary
+    5. If the excerpts don't answer the question, say so briefly
+
+    CONCISE ANSWER:
+    """
