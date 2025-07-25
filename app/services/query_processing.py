@@ -2,7 +2,7 @@
 
 from app.services.prompts import EXPANSION_SYSTEM_PROMPT
 from app.services.embeddings import embed_single_text  # Your existing embedding logic
-from app.services.VectorSearching import search_similar_chunks  # You already have this
+from app.services.vector_search import search_similar_chunks  # You already have this
 from app.services.models import get_reply_from_model  
 from typing import Optional
 import logging

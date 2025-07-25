@@ -2,7 +2,7 @@ import os
 from app.services.extraction import extract_and_preprocess_text
 from app.services.chunking import chunk_text
 from app.services.embeddings import embed_texts
-from app.services.vectorstorage import store_embeddings_to_qdrant  # <-- new import
+from app.services.vector_storage import store_embeddings_to_qdrant  # <-- new import
 
 async def process_mcq_document(
     tmp_path: str,
