@@ -970,7 +970,6 @@ MCQ_GEN_USER_PROMPT = """
 # Quiz Question Generation Task
 
 ## Generation Parameters
-- **Topic**: {TOPIC}
 - **Difficulty Level**: {DIFFICULTY_LEVEL}
 - **Target Count**: {K}
 
@@ -987,9 +986,6 @@ Generate exactly **{K}** quiz questions as a JSON array. Each object must follow
    "question": "What is the main advantage of using a hash table?",
    "options": ["a) Constant time access", "b) Sorted data", "c) Low memory usage", "d) Simplified recursion"],
    "correct_answer": "a) Constant time access",{EXPLANATION_FIELD}
-   "difficulty": {DIFFICULTY_NUMBER},
-   "topic": "{TOPIC}",
-   "question_type": "multiple_choice"
  }}
 ]
 

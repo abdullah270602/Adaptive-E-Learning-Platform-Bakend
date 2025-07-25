@@ -13,7 +13,6 @@ async def generate_mcq_questions(
     difficulty_level: str,
     num_mcqs: int,
     explanation: bool,
-    topic: str,
     model_id: str
 ) -> List[dict]:
     """
@@ -52,7 +51,6 @@ async def generate_mcq_questions(
     
     # Format user prompt
     user_prompt = MCQ_GEN_USER_PROMPT.format(
-        TOPIC=topic,
         DIFFICULTY_LEVEL=difficulty_level,
         K=num_mcqs,
         CONTENT=content,
