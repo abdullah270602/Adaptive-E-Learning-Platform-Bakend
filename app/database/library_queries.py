@@ -68,7 +68,7 @@ def get_document_types_by_ids(
         cursor.execute(
             """
             SELECT id FROM books 
-            WHERE id = ANY(%s) AND user_id = %s
+            WHERE id = ANY(%s::uuid[]) AND user_id = %s
         """,
             (doc_ids, user_id),
         )
@@ -84,7 +84,7 @@ def get_document_types_by_ids(
         cursor.execute(
             """
             SELECT id FROM presentations 
-            WHERE id = ANY(%s) AND user_id = %s
+            WHERE id = ANY(%s::uuid[]) AND user_id = %s
         """,
             (doc_ids, user_id),
         )
@@ -100,7 +100,7 @@ def get_document_types_by_ids(
         cursor.execute(
             """
             SELECT id FROM notes 
-            WHERE id = ANY(%s) AND user_id = %s
+            WHERE id = ANY(%s::uuid[]) AND user_id = %s
         """,
             (doc_ids, user_id),
         )
