@@ -151,13 +151,10 @@ async def perform_library_search(
     Perform RAG search across user's library
     """
     try:
-        # Enhanced query processing for better coverage
         logger.info(f"Starting library search for user {user_id}: '{query}'")
 
-        # Try multiple search strategies for better document coverage
         all_chunks = await multi_strategy_search(query, user_id, max_chunks)
 
-        # Log chunks before filtering
         logger.info(f"Multi-strategy search found {len(all_chunks)} chunks")
         if all_chunks:
             scores = [chunk.get("score", 0) for chunk in all_chunks]
@@ -165,7 +162,6 @@ async def perform_library_search(
                 f"Score range: min={min(scores):.3f}, max={max(scores):.3f}, avg={sum(scores)/len(scores):.3f}"
             )
 
-        # Filter by score if needed
         if min_score > 0:
             before_filter = len(all_chunks)
             similar_chunks = [
@@ -183,8 +179,8 @@ async def perform_library_search(
                 "sources": [],
                 "references": [],
             }
-
-        # Ensure document diversity and filter by types
+        
+        # TODO FIlter by doc if needed in future
         similar_chunks = ensure_document_diversity(similar_chunks, max_per_doc=4)
 
         if document_types:
@@ -197,12 +193,10 @@ async def perform_library_search(
                 "references": [],
             }
 
-        # Get document metadata using your efficient caching
         doc_ids = list(
             set(chunk["doc_id"] for chunk in similar_chunks if chunk["doc_id"])
         )
 
-        # Debug logging
         logger.info(f"Found {len(similar_chunks)} chunks with doc_ids: {doc_ids}")
         for i, chunk in enumerate(similar_chunks[:3]):  # Log first 3 chunks
             logger.info(
@@ -216,7 +210,6 @@ async def perform_library_search(
             f"Retrieved metadata for {len(documents_metadata)} documents: {list(documents_metadata.keys())}"
         )
 
-        # Generate AI response
         answer = await generate_rag_answer(query, similar_chunks, documents_metadata)
 
         # Format response
@@ -309,8 +302,8 @@ async def generate_rag_answer(
                 {"role": "system", "content": RAG_SYSTEM_PROMPT},
                 {"role": "user", "content": prompt},
             ],
-            temperature=0.2,  # Lower temperature for more focused responses
-            max_tokens=250,  # Balanced: enough for multi-document answers, not too verbose
+            temperature=0.2,
+            max_tokens=250,
         )
 
         return response.choices[0].message.content.strip()
@@ -324,7 +317,7 @@ def format_search_response(
     answer: str, chunks: List[Dict], documents_metadata: Dict
 ) -> Dict:
     """Format the final search response"""
-    # Get unique documents
+
     unique_docs = {}
     for chunk in chunks:
         doc_id = chunk.get("doc_id")
@@ -343,20 +336,20 @@ def format_search_response(
 
     # Create references list
     references = []
-    for doc_id, doc_info in unique_docs.items():
-        title = doc_info.get("title") or doc_info.get(
-            "original_filename", "Unknown Document"
-        )
-        doc_type = doc_info.get("document_type", "document")
+    # for doc_id, doc_info in unique_docs.items():
+    #     title = doc_info.get("title") or doc_info.get(
+    #         "original_filename", "Unknown Document"
+    #     )
+    #     doc_type = doc_info.get("document_type", "document")
 
-        references.append(
-            {
-                "id": doc_id,
-                "title": title,
-                "topic": extract_topic_from_title(title),
-                "type": doc_type.title(),
-            }
-        )
+    #     references.append(
+    #         {
+    #             "id": doc_id,
+    #             "title": title,
+    #             "topic": extract_topic_from_title(title),
+    #             "type": doc_type.title(),
+    #         }
+    #     )
 
     return {
         "answer": answer,
@@ -370,7 +363,6 @@ def extract_topic_from_title(title: str) -> str:
     if not title:
         return "General"
 
-    # Remove common document indicators and file extensions
     cleaned = (
         title.replace("Chapter", "")
         .replace("Section", "")
