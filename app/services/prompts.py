@@ -713,6 +713,10 @@ TOOLS_AVAILABLE = {
         "name": "quiz",
         "description": "Generates quiz questions for student assessment, practice, learning or understanding"
     },
+    "visualization": {
+        "name": "visualization",
+        "description": "Creates AI-generated image sequences to visualize complex concepts and processes as an educational slideshow (EXPENSIVE - use sparingly only for complex visual concepts that benefit from step-by-step imagery)"
+    },
 }
 
 

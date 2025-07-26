@@ -186,3 +186,36 @@ async def get_tool_response(
         import traceback; traceback.print_exc();
         logger.error(f"[Get Tool Response] Failed to retrieve tool response: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to retrieve tool response.")
+
+
+@router.post("/test-visualization")
+async def test_visualization_endpoint(
+    current_user: str = Depends(get_current_user),
+):
+    """
+    Test endpoint for visualization tool - generates a simple demo visualization
+    """
+    try:
+        from app.services.visualization_generator import generate_visualization
+        
+        # Test data
+        test_content = "Photosynthesis is the process by which plants convert sunlight, carbon dioxide, and water into glucose and oxygen. This process occurs in the chloroplasts of plant cells and involves two main stages: the light-dependent reactions and the Calvin cycle."
+        
+        test_learning_profile = {
+            "learning_style": "visual",
+            "difficulty_level": "intermediate"
+        }
+        
+        result = await generate_visualization(
+            content=test_content,
+            title="Object-Oriented Programming", 
+            chapter_name="Chapter 1: Programming Fundamentals",
+            section_name="1.2 Classes and Objects",
+            learning_profile=test_learning_profile
+        )
+        
+        return result
+        
+    except Exception as e:
+        logger.error(f"Test visualization failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Visualization test failed: {str(e)}")

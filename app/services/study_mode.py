@@ -22,6 +22,7 @@ import fitz
 from datetime import datetime
 
 from app.services.quiz_generator import generate_quiz_questions
+from app.services.visualization_generator import generate_visualization
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,9 @@ LEARNING_TOOLS_WITH_PARAMS = {
     ),
     "quiz": lambda content, title, chapter_name, section_name, learning_profile, count=5, model_id=KIMI_K2_INSTRUCT_ID: generate_quiz_questions(
         content, title, chapter_name, section_name, learning_profile, count, model_id
+    ),
+    "visualization": lambda content, title, chapter_name, section_name, learning_profile: generate_visualization(
+        content, title, chapter_name, section_name, learning_profile
     ),
 }
 
