@@ -31,11 +31,11 @@ async def search_library(
         logger.info(f"Library search request from user {current_user}: '{request.query}'")
         
         result = await perform_library_search(
-            query=request.query.strip(),
+            query=request.query.strip().lower(),
             user_id=current_user,
             max_chunks=20,
             document_types=None,
-            min_score=0.22
+            min_score=0.20
         )
         
         logger.info(f"Library search completed for user {current_user}: {len(result.get('references', []))} sources found")
