@@ -30,13 +30,12 @@ async def search_library(
         
         logger.info(f"Library search request from user {current_user}: '{request.query}'")
         
-        # Perform RAG search with optimal defaults for document diversity
         result = await perform_library_search(
             query=request.query.strip(),
             user_id=current_user,
-            max_chunks=20,  # More chunks for better document coverage
-            document_types=None,  # Search all document types
-            min_score=0.25  # Even lower threshold for maximum recall
+            max_chunks=20,
+            document_types=None,
+            min_score=0.22
         )
         
         logger.info(f"Library search completed for user {current_user}: {len(result.get('references', []))} sources found")
