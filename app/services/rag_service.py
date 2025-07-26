@@ -334,22 +334,22 @@ def format_search_response(
         )
         sources.append(title)
 
-    # Create references list
+    # Create references list, atm just titles
     references = []
-    # for doc_id, doc_info in unique_docs.items():
-    #     title = doc_info.get("title") or doc_info.get(
-    #         "original_filename", "Unknown Document"
-    #     )
-    #     doc_type = doc_info.get("document_type", "document")
+    for doc_id, doc_info in unique_docs.items():
+        title = doc_info.get("title") or doc_info.get(
+            "original_filename", "Unknown Document"
+        )
+        doc_type = doc_info.get("document_type", "document")
 
-    #     references.append(
-    #         {
-    #             "id": doc_id,
-    #             "title": title,
-    #             "topic": extract_topic_from_title(title),
-    #             "type": doc_type.title(),
-    #         }
-    #     )
+        references.append(
+            {
+                "id": doc_id,
+                "title": title,
+                "topic": extract_topic_from_title(title),
+                "type": doc_type.title(),
+            }
+        )
 
     return {
         "answer": answer,
