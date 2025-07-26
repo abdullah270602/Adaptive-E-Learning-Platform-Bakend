@@ -140,6 +140,39 @@ def extract_key_terms(query: str) -> List[str]:
     return key_terms[:5]  # Return top 5 key terms
 
 
+def calculate_document_relevance_scores(chunks: List[Dict], query: str) -> Dict[str, float]:
+    """
+    Calculate relevance scores for each document based on their chunks
+    Helps identify when documents are weakly related to the query
+    """
+    doc_scores = {}
+    doc_chunk_counts = {}
+    
+    for chunk in chunks:
+        doc_id = chunk.get("doc_id")
+        if not doc_id:
+            continue
+            
+        score = chunk.get("score", 0)
+        
+        if doc_id not in doc_scores:
+            doc_scores[doc_id] = []
+            doc_chunk_counts[doc_id] = 0
+            
+        doc_scores[doc_id].append(score)
+        doc_chunk_counts[doc_id] += 1
+    
+    # Calculate average score per document
+    doc_relevance = {}
+    for doc_id, scores in doc_scores.items():
+        # Weight by both average score and number of chunks found
+        avg_score = sum(scores) / len(scores)
+        chunk_bonus = min(len(scores) * 0.02, 0.1)  # Small bonus for multiple relevant chunks
+        doc_relevance[doc_id] = avg_score + chunk_bonus
+        
+    return doc_relevance
+
+
 async def perform_library_search(
     query: str,
     user_id: str,
@@ -164,14 +197,74 @@ async def perform_library_search(
 
         if min_score > 0:
             before_filter = len(all_chunks)
+            
+            # Dynamic thresholding: if we have multiple documents, use higher threshold
+            # to avoid weak connections between unrelated documents
+            doc_count = len(set(chunk.get('doc_id') for chunk in all_chunks))
+            
+            if doc_count > 1:
+                # Multiple documents found - use higher threshold to ensure relevance
+                dynamic_threshold = max(min_score, 0.15)  # At least 0.15 for multi-doc
+                logger.info(f"Multiple documents detected ({doc_count}), using higher threshold: {dynamic_threshold}")
+            else:
+                # Single document - use original threshold
+                dynamic_threshold = min_score
+                logger.info(f"Single document detected, using original threshold: {dynamic_threshold}")
+            
             similar_chunks = [
-                chunk for chunk in all_chunks if chunk.get("score", 0) >= min_score
+                chunk for chunk in all_chunks if chunk.get("score", 0) >= dynamic_threshold
             ]
+            
             logger.info(
-                f"Score filter (>={min_score}): {before_filter} -> {len(similar_chunks)} chunks"
+                f"Score filter (>={dynamic_threshold}): {before_filter} -> {len(similar_chunks)} chunks"
             )
         else:
             similar_chunks = all_chunks
+
+        # Additional quality filter for multi-document scenarios
+        if len(similar_chunks) > 0:
+            doc_count = len(set(chunk.get('doc_id') for chunk in similar_chunks))
+            
+            if doc_count > 1:
+                # Calculate score distribution
+                scores = [chunk.get("score", 0) for chunk in similar_chunks]
+                max_score = max(scores)
+                score_threshold = max_score * 0.7  # Keep chunks within 70% of max score
+                
+                # Filter out significantly weaker chunks
+                quality_filtered = [
+                    chunk for chunk in similar_chunks 
+                    if chunk.get("score", 0) >= score_threshold
+                ]
+                
+                removed_count = len(similar_chunks) - len(quality_filtered)
+                if removed_count > 0:
+                    logger.info(f"Removed {removed_count} low-quality chunks (score < {score_threshold:.3f})")
+                    similar_chunks = quality_filtered
+                
+                # Additional document relevance filtering
+                if len(set(chunk.get('doc_id') for chunk in similar_chunks)) > 1:
+                    doc_relevance = calculate_document_relevance_scores(similar_chunks, query)
+                    
+                    # If we have documents with very different relevance scores, filter out the weakest
+                    if len(doc_relevance) > 1:
+                        max_relevance = max(doc_relevance.values())
+                        relevance_threshold = max_relevance * 0.6  # Keep docs within 60% of best
+                        
+                        relevant_docs = {
+                            doc_id for doc_id, relevance in doc_relevance.items() 
+                            if relevance >= relevance_threshold
+                        }
+                        
+                        if len(relevant_docs) < len(doc_relevance):
+                            filtered_chunks = [
+                                chunk for chunk in similar_chunks 
+                                if chunk.get('doc_id') in relevant_docs
+                            ]
+                            
+                            removed_docs = len(doc_relevance) - len(relevant_docs)
+                            logger.info(f"Filtered out {removed_docs} irrelevant documents based on relevance scores")
+                            similar_chunks = filtered_chunks
 
         if not similar_chunks:
             return {
