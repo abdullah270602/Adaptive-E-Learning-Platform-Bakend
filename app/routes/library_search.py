@@ -21,7 +21,6 @@ async def search_library(
     Search across user's document library using RAG
     """
     try:
-        # Validate query
         if not request.query or len(request.query.strip()) < 3:
             raise HTTPException(
                 status_code=400, 
@@ -31,11 +30,11 @@ async def search_library(
         logger.info(f"Library search request from user {current_user}: '{request.query}'")
         
         result = await perform_library_search(
-            query=request.query.strip().lower(),
+            query=request.query.strip(),
             user_id=current_user,
             max_chunks=20,
             document_types=None,
-            min_score=0.20
+            min_score=0.10 # Lower threshold for maximum recall
         )
         
         logger.info(f"Library search completed for user {current_user}: {len(result.get('references', []))} sources found")
