@@ -9,7 +9,7 @@ from app.services.constants import DEFAULT_MODEL_ID  # Import default model ID
 router = APIRouter(prefix="/quiz-gen", tags=["Quiz Generation"])
 
 
-@router.post("/generate-mcqs", status_code=status.HTTP_200_OK)
+@router.post("/", status_code=status.HTTP_200_OK)
 async def generate_mcqs(
     user_query: str = Form(...),
     difficulty_level: str = Form(...),
