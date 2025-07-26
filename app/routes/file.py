@@ -3,7 +3,6 @@ import logging
 import os
 import traceback
 import platform
-from typing import Optional
 import uuid
 from uuid import UUID
 from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException, status
@@ -19,9 +18,6 @@ from app.services.delete_file import delete_document_and_assets
 from app.services.notes_upload import process_uploaded_notes
 from app.services.presentation_upload import process_uploaded_slides
 from app.services.mcq_main import process_mcq_document
-from app.services.query_processing import expand_user_query_and_search
-from app.services.mcq_generator import generate_mcq_questions
-from app.services.downloadfile import create_docx,create_pdf
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/file", tags=["Files"])
@@ -83,7 +79,7 @@ async def upload_file(
         if not doc_id:
             raise HTTPException(status_code=500, detail="Document ID not found after processing.")
 
-        # ✅ Call MCQ processing pipeline
+        # Call MCQ processing pipeline
         storage_result = await process_mcq_document(
             tmp_path=tmp_path,
             filename=file.filename,
@@ -95,7 +91,7 @@ async def upload_file(
         return {
             "message": "Upload successful",
             **result,
-            **storage_result  # wrapped inside "storage_result" key
+            **storage_result
         }
 
     except HTTPException:
@@ -104,10 +100,6 @@ async def upload_file(
         traceback.print_exc()
         logger.error(f"[Upload] Failed to upload: {str(e)}")
         raise HTTPException(status_code=500, detail="Upload failed.")
-
-    
-
-    
 
 
 @router.get("/books")
@@ -181,50 +173,3 @@ def list_user_notes(current_user: str = Depends(get_current_user)):
         raise HTTPException(status_code=500, detail="Failed to retrieve notes.")
     
 
-@router.post("/generate-mcqs", status_code=status.HTTP_200_OK)
-async def generate_mcqs(
-    user_query: str = Form(...),
-    difficulty_level: str = Form(...),
-    num_mcqs: int = Form(...),
-    explanation: bool = Form(...),
-    current_user: str = Depends(get_current_user),
-):
-    try:
-        # Call your wrapped function that handles:
-        # 1. Expansion
-        # 2. Embedding
-        # 3. Vector DB Search
-        results: Optional[list[dict]] = await expand_user_query_and_search(
-            user_query=user_query,
-            user_id=current_user,
-            model_id="d50a33ce-2462-4a5a-9aa7-efc2d1749745",  # Replace with real model_id
-            top_k=5 # or whatever suits
-        )
-
-        if results is None:
-            return {"status": "error", "message": "Failed to retrieve relevant content."}
-
-        # Extract chunk texts from results
-        chunk_texts = [chunk["text"] for chunk in results]
-        combined_content = "\n\n".join(chunk_texts)
-
-        # Generate MCQs using the retrieved content
-        mcq_questions = await generate_mcq_questions(
-            content=combined_content,
-            difficulty_level=difficulty_level,
-            num_mcqs=num_mcqs,
-            explanation=explanation,
-            model_id="d50a33ce-2462-4a5a-9aa7-efc2d1749745"  # Replace with real model_id
-        )
-
-        return {
-            "status": "success",
-            "generated_mcqs": mcq_questions
-        }
-
-    except Exception as e:
-        return {
-            "status": "error",
-            "message": str(e)
-        }
-    

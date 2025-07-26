@@ -1,5 +1,6 @@
 # app/services/query_expansion.py
 
+from app.services.constants import DEFAULT_MODEL_ID
 from app.services.prompts import EXPANSION_SYSTEM_PROMPT
 from app.services.embeddings import embed_single_text  # Your existing embedding logic
 from app.services.vector_search import search_similar_chunks  # You already have this
@@ -13,7 +14,7 @@ logger = logging.getLogger(__name__)
 async def expand_user_query_and_search(
     user_query: str,
     user_id: str,
-    model_id: str,
+    model_id: str = DEFAULT_MODEL_ID,
     top_k: int = 5
 ) -> Optional[list[dict]]:
     """

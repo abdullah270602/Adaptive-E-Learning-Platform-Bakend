@@ -13,6 +13,7 @@ from app.routes.study_mode import router as study_mode_router
 from app.routes.streaks import router as streaks_router
 from app.routes.transcribe import router as transcribe_router
 from app.routes.library_search import router as library_search_router
+from app.routes.quiz_gen import router as quiz_gen_router
 import logging
 
 logging.basicConfig(
@@ -45,15 +46,15 @@ def read_root():
     return {"FYP Backend": "Online 👍"}
 
 
-@app.on_event("startup")
-async def load_models_to_cache_event():
-    from app.database.connection import PostgresConnection
-    from app.cache.models import load_models_to_cache
-    with PostgresConnection() as conn:
-        try:
-            load_models_to_cache(conn)
-        except Exception as e:
-            logging.error(f" Failed to load models to cache: {e}")
+# @app.on_event("startup")
+# async def load_models_to_cache_event():
+#     from app.database.connection import PostgresConnection
+#     from app.cache.models import load_models_to_cache
+#     with PostgresConnection() as conn:
+#         try:
+#             load_models_to_cache(conn)
+#         except Exception as e:
+#             logging.error(f" Failed to load models to cache: {e}")
 
 app.include_router(file_router)
 app.include_router(auth_router)
@@ -63,4 +64,4 @@ app.include_router(study_mode_router)
 app.include_router(streaks_router)
 app.include_router(transcribe_router)
 app.include_router(library_search_router)
-
+app.include_router(quiz_gen_router)

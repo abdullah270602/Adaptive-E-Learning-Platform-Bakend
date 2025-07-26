@@ -1,3 +1,4 @@
+from app.services.constants import DEFAULT_MODEL_ID
 from app.services.prompts import (
     EXPLANATION_CONFIGS,
     INSTRUCTION_MAPPING,
@@ -15,7 +16,7 @@ from typing import List
 
 
 async def generate_mcq_questions(
-    content: str, difficulty_level: str, num_mcqs: int, explanation: bool, model_id: str
+    content: str, difficulty_level: str, num_mcqs: int, explanation: bool, model_id: str = DEFAULT_MODEL_ID
 ) -> List[dict]:
     """
     Generate MCQ questions from the given content
