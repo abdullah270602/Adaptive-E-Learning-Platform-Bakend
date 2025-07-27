@@ -32,6 +32,8 @@ def save_user_quiz(
         return str(quiz_id)
 
 def get_user_quiz(conn: PGConnection, quiz_id: str, user_id: str) -> dict | None:
+
+    quiz_id=quiz_id.strip()
     """
     Retrieve specific quiz for download
     Returns: Quiz data or None if not found

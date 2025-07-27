@@ -89,6 +89,7 @@ async def download_mcqs(
     quiz_id: str = Form(None),
     current_user: str = Depends(get_current_user)
 ):
+    quiz_id = quiz_id.strip() 
     try:
         with PostgresConnection() as conn:
             if quiz_id:
