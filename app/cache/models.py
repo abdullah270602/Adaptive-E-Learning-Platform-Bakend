@@ -17,7 +17,7 @@ def load_models_to_cache(conn: PGConnection, ttl: int = 3600) -> None:
 
         for model in models:
             model_id = model["id"]
-            key = f"model:{model_id}"
+            key = f"model:{str(model_id)}"
             try:
                 redis_client.set(key, json.dumps(model), ttl=ttl)
             except Exception as e:

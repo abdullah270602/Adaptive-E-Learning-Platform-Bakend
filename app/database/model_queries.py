@@ -52,4 +52,6 @@ def get_active_model_name_and_service_by_id(conn: PGConnection, model_id: UUID) 
     with conn.cursor(cursor_factory=DictCursor) as cursor:
         cursor.execute(query, (model_id,))
         result = cursor.fetchone()
-        return result
+        if result:
+            return dict(result)
+        return None
