@@ -1,7 +1,7 @@
 from qdrant_client import QdrantClient
 from qdrant_client.http.exceptions import UnexpectedResponse
-from qdrant_client.http.models import Filter, SearchRequest
-from typing import List, Dict
+from qdrant_client.http.models import Filter, SearchRequest, FieldCondition, MatchValue
+from typing import List, Dict, Optional, Union
 import logging
 import os
 from functools import lru_cache
@@ -47,7 +47,7 @@ def _clear_collection_cache():
 
 
 async def _perform_search_with_retry(
-    collection_name: str, query_vector: List[float], limit: int, with_payload: bool
+    collection_name: str, query_vector: List[float], limit: int, with_payload: bool, filter: Optional[Filter] = None
 ) -> List:
     """Perform search with retry logic for better reliability."""
     max_retries = 3
@@ -60,6 +60,7 @@ async def _perform_search_with_retry(
                 query_vector=query_vector,
                 limit=limit,
                 with_payload=with_payload,
+                query_filter=filter,
             )
         except (UnexpectedResponse, ConnectionError, TimeoutError) as e:
             if attempt == max_retries - 1:
@@ -103,6 +104,43 @@ def _validate_and_sanitize_inputs(
     top_k = min(top_k, 100)
 
     return embedded_query, user_id, top_k
+
+
+def _create_document_filter(doc_ids: Optional[Union[str, List[str]]]) -> Optional[Filter]:
+    """Create a Qdrant filter for document IDs."""
+    if not doc_ids:
+        return None
+    
+    # Convert single doc_id to list
+    if isinstance(doc_ids, str):
+        doc_ids = [doc_ids]
+    
+    # Remove empty or None values
+    doc_ids = [doc_id for doc_id in doc_ids if doc_id]
+    
+    if not doc_ids:
+        return None
+    
+    if len(doc_ids) == 1:
+        # Single document filter
+        return Filter(
+            must=[
+                FieldCondition(
+                    key="doc_id",
+                    match=MatchValue(value=doc_ids[0])
+                )
+            ]
+        )
+    else:
+        # Multiple documents filter (using should for OR condition)
+        conditions = [
+            FieldCondition(
+                key="doc_id",
+                match=MatchValue(value=doc_id)
+            )
+            for doc_id in doc_ids
+        ]
+        return Filter(should=conditions)
 
 
 def _process_and_validate_results(search_results: List, user_id: str) -> List[Dict]:
@@ -176,7 +214,7 @@ def _process_and_validate_results(search_results: List, user_id: str) -> List[Di
 
 
 async def search_similar_chunks(
-    embedded_query: List[float], user_id: str, top_k: int = 3
+    embedded_query: List[float], user_id: str, top_k: int = 3, doc_ids: Optional[Union[str, List[str]]] = None
 ) -> List[Dict]:
     """
     Searches a user-specific Qdrant collection using a query embedding.
@@ -186,6 +224,8 @@ async def search_similar_chunks(
         embedded_query (List[float]): The embedded vector of the expanded query.
         user_id (str): The user's ID (used for collection lookup).
         top_k (int): Number of results to return.
+        doc_ids (Optional[Union[str, List[str]]]): Document ID(s) to filter results by.
+                                                  Can be a single string or list of strings.
 
     Returns:
         List[Dict]: List of matched chunks with text and metadata.
@@ -203,12 +243,20 @@ async def search_similar_chunks(
             logger.warning(f"Collection {collection_name} does not exist for user.")
             return []
 
+        # Create document filter if doc_ids provided
+        document_filter = _create_document_filter(doc_ids)
+        
+        if doc_ids and document_filter is None:
+            logger.warning("Invalid doc_ids provided, returning empty results")
+            return []
+
         # Perform search with retry logic
         search_results = await _perform_search_with_retry(
             collection_name=collection_name,
             query_vector=embedded_query,
             limit=top_k,
             with_payload=True,
+            filter=document_filter,
         )
 
         # Process and validate results

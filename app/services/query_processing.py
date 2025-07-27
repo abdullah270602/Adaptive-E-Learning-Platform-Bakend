@@ -7,15 +7,16 @@ from app.services.vector_search import search_similar_chunks  # You already have
 from app.services.models import get_reply_from_model  
 from typing import Optional
 import logging
+from typing import Optional,List,Union
 
 logger = logging.getLogger(__name__)
-
 
 async def expand_user_query_and_search(
     user_query: str,
     user_id: str,
     model_id: str = DEFAULT_MODEL_ID,
-    top_k: int = 5
+    top_k: int = 5,
+    doc_ids: Optional[Union[str, List[str]]] = None
 ) -> Optional[list[dict]]:
     """
     Expands the user query using an LLM and performs semantic search to retrieve top relevant chunks.
@@ -25,6 +26,8 @@ async def expand_user_query_and_search(
         user_id (str): ID of the user making the request
         model_id (str): ID of the model to use for query expansion
         top_k (int): Number of chunks to retrieve
+        doc_ids (Optional[Union[str, List[str]]]): Document ID(s) to filter results by.
+                                                  Can be a single string or list of strings.
 
     Returns:
         List of relevant chunks or None
@@ -40,9 +43,7 @@ async def expand_user_query_and_search(
         # Step 1: Query Expansion
         expanded_query = get_reply_from_model(model_id=model_id, chat=chat)
         logger.info(f"Expanded Query: {expanded_query}")
-
-        
-
+                  
         # Step 2: Embed Expanded Query
         embedded_query = await embed_single_text(expanded_query)
 
@@ -53,7 +54,8 @@ async def expand_user_query_and_search(
         search_results = await search_similar_chunks(
             embedded_query=embedded_query,
             user_id=user_id,
-            top_k=top_k
+            top_k=top_k,
+            doc_ids=doc_ids
         )
 
         return search_results
