@@ -24,7 +24,6 @@ async def generate_mcqs(
     explanation: bool = Form(...),
     model_id: str = Form(DEFAULT_MODEL_ID),  # Set default directly
     doc_ids: Optional[str] = Form(None),  # New parameter for document filtering
-    file_type: Optional[str] = Form(None),  # New parameter for download functionality
     current_user: str = Depends(get_current_user),
 ):
     try:
@@ -73,52 +72,7 @@ async def generate_mcqs(
                 mcq_data=mcq_questions
             )
 
-        # If file_type is provided, return the file for download
-        if file_type:
-            try:
-                # Generate the file
-                if file_type.lower() == "pdf":
-                    file_buffer = create_pdf(mcq_questions)
-                    filename = f"mcqs_{current_user}_{quiz_id}.pdf"
-                    media_type = "application/pdf"
-
-                elif file_type.lower() == "docx":
-                    file_buffer = create_docx(mcq_questions)
-                    filename = f"mcqs_{current_user}_{quiz_id}.docx"
-                    media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-
-                else:
-                    # If invalid file type, return JSON response with error
-                    return {
-                        "status": "error",
-                        "message": "Invalid file type. Supported types: pdf, docx",
-                        "generated_mcqs": mcq_questions,
-                        "quiz_id": quiz_id
-                    }
-
-                file_buffer.seek(0)  # Ensure correct start
-
-                return StreamingResponse(
-                    file_buffer,
-                    media_type=media_type,
-                    headers={
-                        "Content-Disposition": f'attachment; filename="{filename}"',
-                        "Cache-Control": "no-cache, no-store, must-revalidate",
-                        "Pragma": "no-cache",
-                        "Expires": "0"
-                    }
-                )
-
-            except Exception as download_error:
-                # If download fails, return JSON response with the MCQs
-                return {
-                    "status": "partial_success",
-                    "message": f"MCQs generated successfully but download failed: {str(download_error)}",
-                    "generated_mcqs": mcq_questions,
-                    "quiz_id": quiz_id
-                }
-
-        # If no file_type provided, return JSON response as before
+        # Return outside the connection block
         return {
             "status": "success", 
             "generated_mcqs": mcq_questions,
@@ -127,7 +81,6 @@ async def generate_mcqs(
 
     except Exception as e:
         return {"status": "error", "message": str(e)}
-    
 
 @router.post("/download-mcqs")
 async def download_mcqs(

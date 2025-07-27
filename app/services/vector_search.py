@@ -31,19 +31,19 @@ client = QdrantClient(
 DEFAULT_COLLECTION_PREFIX = "user_docs_"
 
 
-@lru_cache(maxsize=1000)
-def _cached_collection_exists(collection_name: str) -> bool:
-    """Cached collection existence check to avoid repeated API calls."""
-    try:
-        return client.collection_exists(collection_name)
-    except Exception as e:
-        logger.error(f"Error checking collection existence for {collection_name}: {e}")
-        return False
+# @lru_cache(maxsize=1000)
+# def _cached_collection_exists(collection_name: str) -> bool:
+#     """Cached collection existence check to avoid repeated API calls."""
+#     try:
+#         return client.collection_exists(collection_name)
+#     except Exception as e:
+#         logger.error(f"Error checking collection existence for {collection_name}: {e}")
+#         return False
 
 
-def _clear_collection_cache():
-    """Clear the collection existence cache."""
-    _cached_collection_exists.cache_clear()
+# def _clear_collection_cache():
+#     """Clear the collection existence cache."""
+#     _cached_collection_exists.cache_clear()
 
 
 async def _perform_search_with_retry(
@@ -239,9 +239,9 @@ async def search_similar_chunks(
         collection_name = f"{DEFAULT_COLLECTION_PREFIX}{user_id}"
 
         # Check collection existence with caching
-        if not _cached_collection_exists(collection_name):
-            logger.warning(f"Collection {collection_name} does not exist for user.")
-            return []
+        # if not _cached_collection_exists(collection_name):
+        #     logger.warning(f"Collection {collection_name} does not exist for user.")
+        #     return []
 
         # Create document filter if doc_ids provided
         document_filter = _create_document_filter(doc_ids)
@@ -271,8 +271,8 @@ async def search_similar_chunks(
     except UnexpectedResponse as e:
         logger.error(f"Qdrant error: {str(e)}")
         # Clear cache in case collection was deleted
-        _clear_collection_cache()
-        return []
+        # _clear_collection_cache()
+        # return []
 
     except (ConnectionError, TimeoutError) as e:
         logger.error(f"Connection/timeout error: {e}")
@@ -298,8 +298,8 @@ def get_collection_stats(user_id: str) -> Dict:
     collection_name = f"{DEFAULT_COLLECTION_PREFIX}{user_id}"
 
     try:
-        if not _cached_collection_exists(collection_name):
-            return {"exists": False}
+        # if not _cached_collection_exists(collection_name):
+        #     return {"exists": False}
 
         collection_info = client.get_collection(collection_name)
         return {
@@ -315,7 +315,7 @@ def get_collection_stats(user_id: str) -> Dict:
         return {"exists": False, "error": str(e)}
 
 
-def clear_caches():
-    """Clear all internal caches."""
-    _clear_collection_cache()
-    logger.info("Cleared all caches")
+# def clear_caches():
+#     """Clear all internal caches."""
+#     _clear_collection_cache()
+#     logger.info("Cleared all caches")
