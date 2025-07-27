@@ -4,8 +4,6 @@ from typing import Optional
 import json
 import io
 from fastapi import Response
-
-
 from app.auth.dependencies import get_current_user
 from app.services.mcq_generator import generate_mcq_questions
 from app.services.query_processing import expand_user_query_and_search
@@ -13,6 +11,9 @@ from app.services.constants import DEFAULT_MODEL_ID  # Import default model ID
 from app.database.mcq_queries import save_user_quiz,get_user_latest_quiz,get_user_quiz
 from app.database.connection import PostgresConnection
 from app.services.downloadfile import create_docx,create_pdf
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/quiz-gen", tags=["Quiz Generation"])
 
@@ -32,6 +33,7 @@ async def generate_mcqs(
         # 1. Expansion
         # 2. Embedding
         # 3. Vector DB Search
+        logger.info(f"[user_query]: {user_query}, model_id: {model_id}, doc_ids: {doc_ids}, doc_type: {file_type}")
         results = await expand_user_query_and_search(
             user_query=user_query,
             user_id=current_user,
@@ -58,7 +60,7 @@ async def generate_mcqs(
             explanation=explanation,
             model_id=model_id,
         )
-
+        logger.info(f"Generated MCQs: {json.dumps(mcq_questions, indent=2)}")
         # Save MCQs to database
         quiz_id = None
         with PostgresConnection() as conn:
