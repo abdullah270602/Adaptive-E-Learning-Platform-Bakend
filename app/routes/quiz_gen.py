@@ -8,7 +8,7 @@ from app.auth.dependencies import get_current_user
 from app.services.mcq_generator import generate_mcq_questions
 from app.services.query_processing import expand_user_query_and_search
 from app.services.constants import DEFAULT_MODEL_ID  # Import default model ID
-from app.database.mcq_queries import save_user_quiz,get_user_latest_quiz,get_user_quiz
+from app.database.mcq_queries import save_user_quiz,get_user_latest_quiz,get_user_quiz,save_quiz_history
 from app.database.connection import PostgresConnection
 from app.services.download_file import create_docx,create_pdf
 import logging
@@ -185,3 +185,63 @@ async def download_mcqs(
     except Exception as e:
         print(f"DEBUG: Error in /download-mcqs: {e}")
         raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
+    
+
+@router.post("/quiz-history", status_code=status.HTTP_200_OK)
+async def save_quiz_history_endpoint(
+    quiz_id: str = Form(...),  # Changed from int to str for UUID
+    doc_id: str = Form(...),   # Changed from int to str for UUID
+    doc_name: str = Form(...),
+    score: str = Form(...),  # e.g., "8/10"
+    accuracy: float = Form(...),  # e.g., 80.0
+    quiz_data: str = Form(...),  # JSON string of quiz data
+    current_user: str = Depends(get_current_user),
+):
+    try:
+        logger.info(f"Saving quiz history for user: {current_user}, quiz_id: {quiz_id}, score: {score}")
+        
+        # Parse quiz_data from JSON string to list
+        try:
+            quiz_data_parsed = json.loads(quiz_data)
+        except json.JSONDecodeError:
+            return {
+                "status": "error",
+                "message": "Invalid JSON format for quiz_data",
+            }
+        
+        # Save quiz history to database
+        history_id = None
+        with PostgresConnection() as conn:
+            history_id = save_quiz_history(
+                conn=conn,
+                user_id=current_user,
+                quiz_id=quiz_id,
+                doc_id=doc_id,
+                doc_name=doc_name,
+                score=score,
+                accuracy=accuracy,
+                quiz_data=quiz_data_parsed
+            )
+        
+        logger.info(f"Quiz history saved successfully with ID: {history_id}")
+        
+        return {
+            "status": "success",
+            "message": "Quiz history saved successfully",
+            "history_id": history_id,
+            "data": {
+                "quiz_id": quiz_id,
+                "doc_id": doc_id,
+                "doc_name": doc_name,
+                "score": score,
+                "accuracy": accuracy,
+                "user_id": current_user
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error saving quiz history: {str(e)}")
+        return {
+            "status": "error",
+            "message": f"Failed to save quiz history: {str(e)}",
+        }

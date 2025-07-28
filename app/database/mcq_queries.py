@@ -169,3 +169,33 @@ def get_quiz_count_by_user(conn: PGConnection, user_id: str) -> int:
     with conn.cursor() as cursor:
         cursor.execute(query, (user_id,))
         return cursor.fetchone()[0]
+    
+
+def save_quiz_history(
+    conn: PGConnection,
+    user_id: str,
+    quiz_id: str,  # Changed from int to str for UUID
+    doc_id: str,   # Changed from int to str for UUID
+    doc_name: str,
+    score: str,
+    accuracy: float,
+    quiz_data: List[Dict]
+) -> str:
+    """
+    Save quiz history to database
+    Returns: history_id (UUID as string)
+    """
+    query = """
+    INSERT INTO quiz_history (user_id, quiz_id, doc_id, doc_name, score, accuracy, quiz_data)
+    VALUES (%s, %s, %s, %s, %s, %s, %s)
+    RETURNING id;
+    """
+    
+    with conn.cursor() as cursor:
+        cursor.execute(
+            query,
+            (user_id, quiz_id, doc_id, doc_name, score, accuracy, json.dumps(quiz_data))
+        )
+        history_id = cursor.fetchone()[0]
+        conn.commit()
+        return str(history_id)
