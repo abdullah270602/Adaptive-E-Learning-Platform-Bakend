@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, Form, status,HTTPException
+from fastapi import APIRouter, Depends, status, HTTPException
 from fastapi.responses import StreamingResponse
 from typing import Optional
 import json
+from pydantic import BaseModel
 import io
 from fastapi import Response
 from app.auth.dependencies import get_current_user
@@ -187,58 +188,61 @@ async def download_mcqs(
         raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
     
 
+class QuizHistoryRequest(BaseModel): #TODO move to separate file
+    quiz_id: str  # UUID as string
+    doc_id: str   # UUID as string
+    doc_name: str
+    score: str    # e.g., "8/10"
+    accuracy: float  # e.g., 80.0
+    quiz_data: str  # JSON string of quiz data
+
 @router.post("/quiz-history", status_code=status.HTTP_200_OK)
 async def save_quiz_history_endpoint(
-    quiz_id: str = Form(...),  # Changed from int to str for UUID
-    doc_id: str = Form(...),   # Changed from int to str for UUID
-    doc_name: str = Form(...),
-    score: str = Form(...),  # e.g., "8/10"
-    accuracy: float = Form(...),  # e.g., 80.0
-    quiz_data: str = Form(...),  # JSON string of quiz data
+    body: QuizHistoryRequest,
     current_user: str = Depends(get_current_user),
 ):
     try:
-        logger.info(f"Saving quiz history for user: {current_user}, quiz_id: {quiz_id}, score: {score}")
-        
+        logger.info(f"Saving quiz history for user: {current_user}, quiz_id: {body.quiz_id}, score: {body.score}")
+
         # Parse quiz_data from JSON string to list
         try:
-            quiz_data_parsed = json.loads(quiz_data)
+            quiz_data_parsed = json.loads(body.quiz_data)
         except json.JSONDecodeError:
             return {
                 "status": "error",
                 "message": "Invalid JSON format for quiz_data",
             }
-        
+
         # Save quiz history to database
         history_id = None
         with PostgresConnection() as conn:
             history_id = save_quiz_history(
                 conn=conn,
                 user_id=current_user,
-                quiz_id=quiz_id,
-                doc_id=doc_id,
-                doc_name=doc_name,
-                score=score,
-                accuracy=accuracy,
+                quiz_id=body.quiz_id,
+                doc_id=body.doc_id,
+                doc_name=body.doc_name,
+                score=body.score,
+                accuracy=body.accuracy,
                 quiz_data=quiz_data_parsed
             )
-        
+
         logger.info(f"Quiz history saved successfully with ID: {history_id}")
-        
+
         return {
             "status": "success",
             "message": "Quiz history saved successfully",
             "history_id": history_id,
             "data": {
-                "quiz_id": quiz_id,
-                "doc_id": doc_id,
-                "doc_name": doc_name,
-                "score": score,
-                "accuracy": accuracy,
+                "quiz_id": body.quiz_id,
+                "doc_id": body.doc_id,
+                "doc_name": body.doc_name,
+                "score": body.score,
+                "accuracy": body.accuracy,
                 "user_id": current_user
             }
         }
-        
+
     except Exception as e:
         logger.error(f"Error saving quiz history: {str(e)}")
         return {
