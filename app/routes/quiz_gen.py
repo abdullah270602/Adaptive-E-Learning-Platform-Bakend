@@ -10,7 +10,7 @@ from app.services.query_processing import expand_user_query_and_search
 from app.services.constants import DEFAULT_MODEL_ID  # Import default model ID
 from app.database.mcq_queries import save_user_quiz,get_user_latest_quiz,get_user_quiz
 from app.database.connection import PostgresConnection
-from app.services.downloadfile import create_docx,create_pdf
+from app.services.download_file import create_docx,create_pdf
 import logging
 
 logger = logging.getLogger(__name__)
