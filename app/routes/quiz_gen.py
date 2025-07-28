@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Form, status, HTTPException
+from fastapi import APIRouter, Depends, Form, status,HTTPException
 from fastapi.responses import StreamingResponse
 from typing import Optional
 import json
@@ -8,9 +8,9 @@ from app.auth.dependencies import get_current_user
 from app.services.mcq_generator import generate_mcq_questions
 from app.services.query_processing import expand_user_query_and_search
 from app.services.constants import DEFAULT_MODEL_ID  # Import default model ID
-from app.database.mcq_queries import save_user_quiz, get_user_latest_quiz, get_user_quiz
+from app.database.mcq_queries import save_user_quiz,get_user_latest_quiz,get_user_quiz
 from app.database.connection import PostgresConnection
-from app.services.downloadfile import create_docx, create_pdf
+from app.services.downloadfile import create_docx,create_pdf
 import logging
 
 logger = logging.getLogger(__name__)
@@ -23,10 +23,9 @@ async def generate_mcqs(
     difficulty_level: str = Form(...),
     num_mcqs: int = Form(...),  # TODO make pydantic model for RequestBody @izzat
     explanation: bool = Form(...),
-    download_file: bool = Form(False),  # NEW: Boolean condition for file download
-    file_type: str = Form("pdf"),  # NEW: File type for download (pdf/docx)
     model_id: str = Form(DEFAULT_MODEL_ID),  # Set default directly
     doc_ids: Optional[str] = Form(None),  # New parameter for document filtering
+    file_type: Optional[str] = Form(None),  # New parameter for download functionality
     current_user: str = Depends(get_current_user),
 ):
     try:
@@ -34,7 +33,7 @@ async def generate_mcqs(
         # 1. Expansion
         # 2. Embedding
         # 3. Vector DB Search
-        logger.info(f"[user_query]: {user_query}, model_id: {model_id}, doc_ids: {doc_ids}, download_file: {download_file}, file_type: {file_type}")
+        logger.info(f"[user_query]: {user_query}, model_id: {model_id}, doc_ids: {doc_ids}, doc_type: {file_type}")
         results = await expand_user_query_and_search(
             user_query=user_query,
             user_id=current_user,
@@ -62,7 +61,6 @@ async def generate_mcqs(
             model_id=model_id,
         )
         logger.info(f"Generated MCQs: {json.dumps(mcq_questions, indent=2)}")
-        
         # Save MCQs to database
         quiz_id = None
         with PostgresConnection() as conn:
@@ -77,78 +75,61 @@ async def generate_mcqs(
                 mcq_data=mcq_questions
             )
 
-        # NEW: Check boolean condition for response type
-        if download_file:
-            # Return streaming file response
+        # If file_type is provided, return the file for download
+        if file_type:
             try:
-                if not mcq_questions or len(mcq_questions) == 0:
-                    raise HTTPException(status_code=400, detail="No MCQs generated for download")
-
-                # Validate and normalize file_type
-                file_type_lower = file_type.lower().strip()
-                if file_type_lower not in ["pdf", "docx"]:
-                    raise HTTPException(status_code=400, detail="Invalid file type. Use 'pdf' or 'docx'")
-
-                # Generate the file based on file_type
-                if file_type_lower == "pdf":
-                    logger.info(f"Generating PDF with {len(mcq_questions)} MCQs")
+                # Generate the file
+                if file_type.lower() == "pdf":
                     file_buffer = create_pdf(mcq_questions)
                     filename = f"mcqs_{current_user}_{quiz_id}.pdf"
                     media_type = "application/pdf"
-                    
-                elif file_type_lower == "docx":
-                    logger.info(f"Generating DOCX with {len(mcq_questions)} MCQs")
+
+                elif file_type.lower() == "docx":
                     file_buffer = create_docx(mcq_questions)
                     filename = f"mcqs_{current_user}_{quiz_id}.docx"
                     media_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 
-                # Ensure buffer is at the start and has content
-                if not file_buffer:
-                    raise HTTPException(status_code=500, detail="File buffer is empty")
-                
-                file_buffer.seek(0)
-                buffer_size = len(file_buffer.getvalue())
-                logger.info(f"Generated {file_type_lower.upper()} file: {filename}, size: {buffer_size} bytes")
+                else:
+                    # If invalid file type, return JSON response with error
+                    return {
+                        "status": "error",
+                        "message": "Invalid file type. Supported types: pdf, docx",
+                        "generated_mcqs": mcq_questions,
+                        "quiz_id": quiz_id
+                    }
 
-                if buffer_size == 0:
-                    raise HTTPException(status_code=500, detail="Generated file is empty")
+                file_buffer.seek(0)  # Ensure correct start
 
                 return StreamingResponse(
-                    io.BytesIO(file_buffer.getvalue()),  # Create a new buffer to avoid any issues
+                    file_buffer,
                     media_type=media_type,
                     headers={
                         "Content-Disposition": f'attachment; filename="{filename}"',
-                        "Content-Length": str(buffer_size),
                         "Cache-Control": "no-cache, no-store, must-revalidate",
                         "Pragma": "no-cache",
                         "Expires": "0"
                     }
                 )
-                
-            except HTTPException:
-                raise
-            except ValueError as ve:
-                logger.error(f"Validation error in file generation: {ve}")
-                raise HTTPException(status_code=400, detail=str(ve))
-            except RuntimeError as re:
-                logger.error(f"Runtime error in file generation: {re}")
-                raise HTTPException(status_code=500, detail=str(re))
-            except Exception as file_error:
-                logger.error(f"Unexpected error in file generation: {file_error}")
-                raise HTTPException(status_code=500, detail=f"File generation failed: {str(file_error)}")
-        else:
-            # Return JSON response (original behavior)
-            return {
-                "status": "success", 
-                "generated_mcqs": mcq_questions,
-                "quiz_id": quiz_id
-            }
 
-    except HTTPException:
-        raise
+            except Exception as download_error:
+                # If download fails, return JSON response with the MCQs
+                return {
+                    "status": "partial_success",
+                    "message": f"MCQs generated successfully but download failed: {str(download_error)}",
+                    "generated_mcqs": mcq_questions,
+                    "quiz_id": quiz_id
+                }
+
+        # If no file_type provided, return JSON response as before
+        return {
+            "status": "success", 
+            "generated_mcqs": mcq_questions,
+            "quiz_id": quiz_id
+        }
+
     except Exception as e:
-        logger.error(f"Error in generate_mcqs: {e}")
         return {"status": "error", "message": str(e)}
+    
 
 @router.post("/download-mcqs")
 async def download_mcqs(
@@ -202,5 +183,5 @@ async def download_mcqs(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error in /download-mcqs: {e}")
+        print(f"DEBUG: Error in /download-mcqs: {e}")
         raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")

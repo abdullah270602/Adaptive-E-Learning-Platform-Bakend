@@ -15,19 +15,19 @@ DEFAULT_VECTOR_SIZE = 384
 DEFAULT_COLLECTION_PREFIX = "user_docs_"
 
 
-def empty_collection(user_id: str) -> dict:
-    try:
-        collection_name = f"{DEFAULT_COLLECTION_PREFIX}{user_id}"
+# def empty_collection(user_id: str) -> dict:
+#     try:
+#         collection_name = f"{DEFAULT_COLLECTION_PREFIX}{user_id}"
 
-        if not client.collection_exists(collection_name):
-            return {"status": "error", "message": f"Collection {collection_name} does not exist"}
+#         if not client.collection_exists(collection_name):
+#             return {"status": "error", "message": f"Collection {collection_name} does not exist"}
 
-        client.delete_collection(collection_name=collection_name)
+#         client.delete_collection(collection_name=collection_name)
 
-        return {"status": "success", "message": f"Collection {collection_name} has been deleted", "collection_name": collection_name}
-    except Exception as e:
-        logger.exception("[Vector Storage] Failed to empty collection")
-        return {"status": "error", "message": str(e)}
+#         return {"status": "success", "message": f"Collection {collection_name} has been deleted", "collection_name": collection_name}
+#     except Exception as e:
+#         logger.exception("[Vector Storage] Failed to empty collection")
+#         return {"status": "error", "message": str(e)}
 
 
 def ensure_collection_exists(user_id: str, vector_size: int = DEFAULT_VECTOR_SIZE) -> str:
@@ -114,3 +114,59 @@ def create_doc_id_index_for_existing_collections():
                     logger.error(f"Error creating index on {collection_name}: {e}")
     except Exception as e:
         logger.error(f"Failed to create indexes for existing collections: {e}")
+
+
+def delete_document_embeddings(user_id: str, document_id: str) -> dict:
+    """
+    Delete all embeddings for a specific document from the user's collection.
+    
+    Args:
+        user_id: The user ID
+        document_id: The document ID to delete embeddings for
+        
+    Returns:
+        dict: Status and details of the deletion operation
+    """
+    try:
+        collection_name = f"{DEFAULT_COLLECTION_PREFIX}{user_id}"
+        
+        # Check if collection exists
+        if not client.collection_exists(collection_name):
+            logger.warning(f"[Vector Storage] Collection {collection_name} does not exist")
+            return {
+                "status": "warning", 
+                "message": f"Collection {collection_name} does not exist",
+                "deleted_count": 0
+            }
+        
+        # Delete points with matching doc_id
+        from qdrant_client.http.models import Filter, FieldCondition, MatchValue
+        
+        delete_result = client.delete(
+            collection_name=collection_name,
+            points_selector=Filter(
+                must=[
+                    FieldCondition(
+                        key="doc_id",
+                        match=MatchValue(value=document_id)
+                    )
+                ]
+            )
+        )
+        
+        logger.info(f"[Vector Storage] Deleted embeddings for doc_id {document_id} from {collection_name}")
+        
+        return {
+            "status": "success",
+            "message": f"Successfully deleted embeddings for document {document_id}",
+            "collection_name": collection_name,
+            "operation_id": delete_result.operation_id if hasattr(delete_result, 'operation_id') else None
+        }
+        
+    except Exception as e:
+        logger.exception(f"[Vector Storage] Failed to delete embeddings for doc_id {document_id}")
+        return {
+            "status": "error", 
+            "message": f"Failed to delete embeddings: {str(e)}",
+            "document_id": document_id
+        }
