@@ -199,3 +199,76 @@ def save_quiz_history(
         history_id = cursor.fetchone()[0]
         conn.commit()
         return str(history_id)
+    
+
+def get_quiz_history(
+    conn: PGConnection,
+    history_id: str
+) -> Dict:
+    """
+    Retrieve quiz history from database by history_id
+    Returns: Dictionary with quiz history data or None if not found
+    """
+    query = """
+    SELECT id, quiz_data, quiz_id, doc_id, doc_name, score, accuracy, user_id
+    FROM quiz_history
+    WHERE id = %s;
+    """
+    
+    with conn.cursor() as cursor:
+        cursor.execute(query, (history_id,))
+        result = cursor.fetchone()
+        
+        if result:
+            # Handle quiz_data - it might already be parsed as list/dict or still be a string
+            quiz_data = result[1]
+            if isinstance(quiz_data, str):
+                quiz_data = json.loads(quiz_data)
+            # If it's already a list/dict, use it as is
+            
+            return {
+                "history_id": str(result[0]),          # id column
+                "quiz_data": quiz_data,                # quiz_data column - handle both cases
+                "quiz_id": str(result[2]),             # quiz_id column
+                "doc_id": str(result[3]),              # doc_id column
+                "doc_name": result[4],                 # doc_name column
+                "score": result[5],                    # score column
+                "accuracy": float(result[6]),          # accuracy column
+                "user_id": str(result[7])              # user_id column
+            }
+        else:
+            return None
+        
+
+
+def get_user_quiz_history(
+    conn: PGConnection,
+    user_id: str
+) -> List[Dict]:
+    """
+    Retrieve all quiz history for a specific user
+    Returns: List of dictionaries with quiz history data for the user
+    """
+    query = """
+    SELECT id, doc_name, score, accuracy, quiz_id, doc_id
+    FROM quiz_history
+    WHERE user_id = %s
+    ORDER BY id DESC;
+    """
+    
+    with conn.cursor() as cursor:
+        cursor.execute(query, (user_id,))
+        results = cursor.fetchall()
+        
+        quiz_history_list = []
+        for result in results:
+            quiz_history_list.append({
+                "history_id": str(result[0]),          # id column
+                "doc_name": result[1],                 # doc_name column
+                "score": result[2],                    # score column
+                "accuracy": float(result[3]),          # accuracy column
+                "quiz_id": str(result[4]),             # quiz_id column
+                "doc_id": str(result[5])               # doc_id column
+            })
+        
+        return quiz_history_list
