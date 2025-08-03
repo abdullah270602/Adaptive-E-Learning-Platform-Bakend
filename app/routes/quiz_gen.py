@@ -9,7 +9,7 @@ from app.auth.dependencies import get_current_user
 from app.services.mcq_generator import generate_mcq_questions
 from app.services.query_processing import expand_user_query_and_search
 from app.services.constants import DEFAULT_MODEL_ID  # Import default model ID
-from app.database.mcq_queries import save_user_quiz,get_user_latest_quiz,get_user_quiz,save_quiz_history
+from app.database.mcq_queries import save_user_quiz,get_user_latest_quiz,get_user_quiz,save_quiz_history,get_quiz_history,get_user_quiz_history,delete_quiz_history
 from app.database.connection import PostgresConnection
 from app.services.download_file import create_docx,create_pdf
 import logging
@@ -195,6 +195,7 @@ class QuizHistoryRequest(BaseModel): #TODO move to separate file
     score: str    # e.g., "8/10"
     accuracy: float  # e.g., 80.0
     quiz_data: str  # JSON string of quiz data
+    time_taken: int
 
 @router.post("/quiz-history", status_code=status.HTTP_200_OK)
 async def save_quiz_history_endpoint(
@@ -224,6 +225,7 @@ async def save_quiz_history_endpoint(
                 doc_name=body.doc_name,
                 score=body.score,
                 accuracy=body.accuracy,
+                time_taken=body.time_taken,  # Added time_taken parameter
                 quiz_data=quiz_data_parsed
             )
 
@@ -239,6 +241,7 @@ async def save_quiz_history_endpoint(
                 "doc_name": body.doc_name,
                 "score": body.score,
                 "accuracy": body.accuracy,
+                "time_taken": body.time_taken,  # Added time_taken to response
                 "user_id": current_user
             }
         }
@@ -248,4 +251,132 @@ async def save_quiz_history_endpoint(
         return {
             "status": "error",
             "message": f"Failed to save quiz history: {str(e)}",
+        }
+    
+
+@router.get("/quiz-history/{history_id}", status_code=status.HTTP_200_OK)
+async def get_quiz_history_endpoint(
+    history_id: str,
+    current_user: str = Depends(get_current_user),
+):
+    try:
+        logger.info(f"Retrieving quiz history for user: {current_user}, history_id: {history_id}")
+        
+        # Retrieve quiz history from database
+        quiz_history = None
+        with PostgresConnection() as conn:
+            quiz_history = get_quiz_history(
+                conn=conn,
+                history_id=history_id
+            )
+        
+        if quiz_history is None:
+            logger.warning(f"Quiz history not found for ID: {history_id}")
+            return {
+                "status": "error",
+                "message": "Quiz history not found",
+            }
+        
+        # Check if the quiz history belongs to the current user
+        if quiz_history["user_id"] != current_user:
+            logger.warning(f"Unauthorized access attempt by user {current_user} for history {history_id}")
+            return {
+                "status": "error",
+                "message": "Unauthorized access to quiz history",
+            }
+        
+        logger.info(f"Quiz history retrieved successfully for ID: {history_id}")
+        
+        return {
+            "status": "success",
+            "message": "Quiz history retrieved successfully",
+            "data": quiz_history
+        }
+        
+    except Exception as e:
+        logger.error(f"Error retrieving quiz history: {str(e)}")
+        return {
+            "status": "error",
+            "message": f"Failed to retrieve quiz history: {str(e)}",
+        }
+
+
+@router.get("/user-quiz-history", status_code=status.HTTP_200_OK)
+async def get_user_quiz_history_endpoint(
+    current_user: str = Depends(get_current_user),
+):
+    try:
+        logger.info(f"Retrieving quiz history list for user: {current_user}")
+        
+        # Retrieve all quiz history for the user
+        user_quiz_history = []
+        with PostgresConnection() as conn:
+            user_quiz_history = get_user_quiz_history(
+                conn=conn,
+                user_id=current_user
+            )
+        
+        logger.info(f"Retrieved {len(user_quiz_history)} quiz records for user: {current_user}")
+        
+        return {
+            "status": "success",
+            "message": f"Retrieved {len(user_quiz_history)} quiz records",
+            "total_quizzes": len(user_quiz_history),
+            "data": user_quiz_history
+        }
+        
+    except Exception as e:
+        logger.error(f"Error retrieving user quiz history: {str(e)}")
+        return {
+            "status": "error",
+            "message": f"Failed to retrieve quiz history: {str(e)}",
+        }
+    
+
+@router.delete("/quiz-history/{history_id}", status_code=status.HTTP_200_OK)
+async def delete_quiz_history_endpoint(
+    history_id: str,
+    current_user: str = Depends(get_current_user),
+):
+    try:
+        logger.info(f"Deleting quiz history record: {history_id} for user: {current_user}")
+        
+        # Delete the quiz history record
+        record_deleted = False
+        with PostgresConnection() as conn:
+            record_deleted = delete_quiz_history(
+                conn=conn,
+                history_id=history_id
+            )
+        
+        if record_deleted:
+            logger.info(f"Successfully deleted quiz history record: {history_id}")
+            return {
+                "status": "success",
+                "message": f"Quiz history record {history_id} deleted successfully",
+                "data": {
+                    "history_id": history_id,
+                    "deleted": True
+                }
+            }
+        else:
+            logger.warning(f"Quiz history record not found: {history_id}")
+            return {
+                "status": "error",
+                "message": f"Quiz history record {history_id} not found",
+                "data": {
+                    "history_id": history_id,
+                    "deleted": False
+                }
+            }
+        
+    except Exception as e:
+        logger.error(f"Error deleting quiz history record {history_id}: {str(e)}")
+        return {
+            "status": "error",
+            "message": f"Failed to delete quiz history record: {str(e)}",
+            "data": {
+                "history_id": history_id,
+                "deleted": False
+            }
         }

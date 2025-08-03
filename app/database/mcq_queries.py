@@ -179,6 +179,7 @@ def save_quiz_history(
     doc_name: str,
     score: str,
     accuracy: float,
+    time_taken: int,  # Added time_taken parameter
     quiz_data: List[Dict]
 ) -> str:
     """
@@ -186,16 +187,110 @@ def save_quiz_history(
     Returns: history_id (UUID as string)
     """
     query = """
-    INSERT INTO quiz_history (user_id, quiz_id, doc_id, doc_name, score, accuracy, quiz_data)
-    VALUES (%s, %s, %s, %s, %s, %s, %s)
+    INSERT INTO quiz_history (user_id, quiz_id, doc_id, doc_name, score, accuracy, time_taken, quiz_data)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
     RETURNING id;
     """
     
     with conn.cursor() as cursor:
         cursor.execute(
             query,
-            (user_id, quiz_id, doc_id, doc_name, score, accuracy, json.dumps(quiz_data))
+            (user_id, quiz_id, doc_id, doc_name, score, accuracy, time_taken, json.dumps(quiz_data))
         )
         history_id = cursor.fetchone()[0]
         conn.commit()
         return str(history_id)
+
+def get_quiz_history(
+    conn: PGConnection,
+    history_id: str
+) -> Dict:
+    """
+    Retrieve quiz history from database by history_id
+    Returns: Dictionary with quiz history data or None if not found
+    """
+    query = """
+    SELECT id, quiz_data, quiz_id, doc_id, doc_name, score, accuracy, time_taken, user_id
+    FROM quiz_history
+    WHERE id = %s;
+    """
+    
+    with conn.cursor() as cursor:
+        cursor.execute(query, (history_id,))
+        result = cursor.fetchone()
+        
+        if result:
+            # Handle quiz_data - it might already be parsed as list/dict or still be a string
+            quiz_data = result[1]
+            if isinstance(quiz_data, str):
+                quiz_data = json.loads(quiz_data)
+            # If it's already a list/dict, use it as is
+            
+            return {
+                "history_id": str(result[0]),          # id column
+                "quiz_data": quiz_data,                # quiz_data column - handle both cases
+                "quiz_id": str(result[2]),             # quiz_id column
+                "doc_id": str(result[3]),              # doc_id column
+                "doc_name": result[4],                 # doc_name column
+                "score": result[5],                    # score column
+                "accuracy": float(result[6]),          # accuracy column
+                "time_taken": result[7],               # time_taken column
+                "user_id": str(result[8])              # user_id column (moved to index 8)
+            }
+        else:
+            return None
+
+
+def get_user_quiz_history(
+    conn: PGConnection,
+    user_id: str
+) -> List[Dict]:
+    """
+    Retrieve all quiz history for a specific user
+    Returns: List of dictionaries with quiz history data for the user
+    """
+    query = """
+    SELECT id, doc_name, score, accuracy, quiz_id, doc_id, time_taken
+    FROM quiz_history
+    WHERE user_id = %s
+    ORDER BY id DESC;
+    """
+    
+    with conn.cursor() as cursor:
+        cursor.execute(query, (user_id,))
+        results = cursor.fetchall()
+        
+        quiz_history_list = []
+        for result in results:
+            quiz_history_list.append({
+                "history_id": str(result[0]),          # id column
+                "doc_name": result[1],                 # doc_name column
+                "score": result[2],                    # score column
+                "accuracy": float(result[3]),          # accuracy column
+                "quiz_id": str(result[4]),             # quiz_id column
+                "doc_id": str(result[5]),              # doc_id column
+                "time_taken": result[6]                # time_taken column
+            })
+        
+        return quiz_history_list
+    
+def delete_quiz_history(
+    conn: PGConnection,
+    history_id: str
+) -> bool:
+    """
+    Delete quiz history record from database by history_id
+    Returns: True if record was deleted, False if not found
+    """
+    query = """
+    DELETE FROM quiz_history
+    WHERE id = %s;
+    """
+    
+    with conn.cursor() as cursor:
+        cursor.execute(query, (history_id,))
+        rows_affected = cursor.rowcount
+        conn.commit()
+        
+        # Return True if a record was deleted, False if no record found
+        return rows_affected > 0
