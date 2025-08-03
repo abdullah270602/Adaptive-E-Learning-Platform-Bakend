@@ -3,6 +3,8 @@
 
 A robust FastAPI backend for an adaptive e-learning platform, featuring Google OAuth2 authentication, document upload and processing, MCQ/quiz generation with LLMs, RAG-based semantic search, study mode, streaks, and more. Integrates with PostgreSQL, Redis, MinIO, and Qdrant for scalable, high-performance operations.
 
+🌐 **Live Website:** [AdaptiveLearnAI.xyz](https://adaptivelearnai.xyz)
+
 ---
 
 ## 📑 Table of Contents
