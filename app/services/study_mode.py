@@ -44,6 +44,9 @@ LEARNING_TOOLS_WITH_PARAMS = {
 def extract_text_from_page(pdf_stream: BytesIO, page_number: int, title: str = "") -> dict:
     """Extract text and metadata from a specific page of a PDF document."""
     try:
+        if page_number > 0:
+            page_number = page_number - 1 # MinIO starts at 1
+            
         doc = fitz.open(stream=pdf_stream, filetype="pdf")
         if page_number < 0 or page_number >= len(doc):
             raise ValueError(f"Page number {page_number} out of bounds.")
