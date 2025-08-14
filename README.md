@@ -122,6 +122,51 @@ uvicorn main:app --reload
 
 ---
 
+## Initialize the Database (PostgreSQL)
+
+This project includes a full schema at `DB_schema_script.sql`. Initialize your database before running the API.
+
+### Option A — Python initializer (recommended)
+
+1. Set environment variables:
+  - `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` (optional: `DB_SSLMODE`)
+
+2. Ensure dependency is installed (already in pyproject):
+  ```powershell
+  uv pip install psycopg2-binary
+  ```
+
+3. Run the initializer:
+  - Windows (PowerShell)
+    ```powershell
+    python .\scripts\init_db.py --sql .\DB_schema_sql_scritp.sql --yes
+    ```
+  - Linux/macOS
+    ```bash
+    python3 scripts/init_db.py --sql DB_schema_sql_scritp.sql --yes
+    ```
+
+What it does:
+- Ensures extensions: `uuid-ossp`, `pgcrypto`
+- Applies tables, triggers, constraints from the schema file
+- Skips invalid `uuid_*` C-language function stubs present in dumps
+
+### Option B — Using psql
+
+```bash
+# Ensure extensions (idempotent)
+psql "$POSTGRES_DSN" -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'
+psql "$POSTGRES_DSN" -c 'CREATE EXTENSION IF NOT EXISTS "pgcrypto";'
+# Apply schema
+psql "$POSTGRES_DSN" -f DB_schema_sql_scritp.sql
+```
+
+Troubleshooting:
+- Errors about `uuid_generate_v4()` or `gen_random_uuid()` mean extensions aren’t enabled.
+- The initializer reports Executed/Skipped/Failed; many “already exists” messages are safe.
+
+---
+
 ## Environment Variables
 
 - `SESSION_SECRET_KEY`: Secret for session middleware
