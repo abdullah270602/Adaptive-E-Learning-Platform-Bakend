@@ -25,6 +25,9 @@ load_dotenv(dotenv_path=".env")
 app = FastAPI(
     title="Adaptive Learn AI Backend",
     description="Backend for Adaptive Learn AI",
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
 )
 
 app.add_middleware(
